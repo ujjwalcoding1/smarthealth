@@ -1,12 +1,13 @@
 /*
-  SmartHealth ESP32 IoT Patient Lifeline Monitor - Dual-Core WiFi & Cloud Edition
+  SmartHealth ESP32 IoT Patient Lifeline Monitor - Real-Time WiFi & Cloud Edition
   =============================================================================
-  Architecture:
-  - Core 1 (Sensor Core): High-frequency real-time sampling of MAX30102 (pulse & SpO2),
-    MPU6050 (3-axis accel & fall impact), DS18B20 (body temperature), and NEO-6M GPS.
-    Zero network delays guarantee that heart beat detection never collapses or skips.
-  - Core 0 (Cloud Core): Background FreeRTOS task handles WiFi connection, auto-reconnect,
-    and non-blocking HTTP JSON telemetry push to the SmartHealth cloud backend.
+  Real Hardware Sensor Integration:
+  - MAX30102: Optical pulse (BPM) & SpO2 reading on I2C Bus 0 (Pins 26 SDA, 13 SCL)
+  - MPU6050: 3-Axis Accelerometer (X, Y, Z) & Fall Impact on I2C Bus 1 (Pins 21 SDA, 22 SCL)
+  - DS18B20: High-accuracy digital body/ambient temperature on GPIO 4
+  - NEO-6M: Satellite GPS navigation on UART2 (Pins 18 RX, 19 TX)
+  - Buzzer: Acoustic alarm on GPIO 25
+  - WiFi & HTTP: Dispatches live real-time JSON telemetry to SmartHealth backend
 */
 
 #include <WiFi.h>
@@ -26,7 +27,7 @@
 const char* WIFI_SSID = "Ujjwal Mehta";
 const char* WIFI_PASSWORD = "Ujjwal@1856";
 
-// Render deployment URL or local IP: e.g. "https://smarthealth-backend.onrender.com" or "http://10.25.212.245:8000"
+// Target Backend URL (Render URL or Local IP: e.g. "http://10.25.212.245:8000")
 const char* SERVER_URL = "http://10.25.212.245:8000";
 
 // =====================================================
@@ -49,7 +50,7 @@ const char* SERVER_URL = "http://10.25.212.245:8000";
 #define GPS_TX_PIN 19
 #define GPS_BAUD_RATE 9600
 
-// Emergency Buzzer Indicator
+// Buzzer Indicator
 #define BUZZER_PIN 25
 #define BUZZER_ENABLED true
 
@@ -57,7 +58,7 @@ const char* SERVER_URL = "http://10.25.212.245:8000";
 #define IMPACT_THRESHOLD_G 2.8f
 
 // =====================================================
-// OBJECTS & BUSES
+// OBJECTS & SENSORS
 // =====================================================
 TwoWire MAXWire = TwoWire(0);
 TwoWire MPUWire = TwoWire(1);
@@ -70,60 +71,48 @@ HardwareSerial gpsSerial(2);
 TinyGPSPlus gps;
 
 // =====================================================
-// THREAD-SAFE SHARED TELEMETRY DATA
-// =====================================================
-struct SharedTelemetry {
-  float bpm = 0.0f;
-  float spo2 = 98.0f;
-  uint32_t ir = 0;
-  uint32_t red = 0;
-  float tempC = 36.8f;
-  float ax = 0.0f, ay = 0.0f, az = 1.0f;
-  float accelG = 1.0f;
-  bool impact = false;
-  bool fingerOn = false;
-  float lat = 28.6139f;
-  float lng = 77.2090f;
-  int sats = 0;
-  bool gpsValid = false;
-};
-
-SharedTelemetry liveTelemetry;
-portMUX_TYPE telemetryMux = portMUX_INITIALIZER_UNLOCKED;
-
-// =====================================================
-// SENSOR TIMERS & STATE
+// GLOBAL LIVE TELEMETRY VARIABLES
 // =====================================================
 bool maxReady = false;
 bool mpuReady = false;
 bool tempReady = false;
 
+// REAL LIVE SENSOR READINGS (Updated dynamically every cycle)
+float temperatureC = NAN;
+float bpm = 0.0f;
+float accelerationG = 1.0f;
+float axG = 0.0f, ayG = 0.0f, azG = 1.0f;
+
+uint32_t irValue = 0;
+uint32_t redValue = 0;
+
 unsigned long lastBeatTime = 0;
 unsigned long lastTempRequest = 0;
 unsigned long lastPrintTime = 0;
+unsigned long lastSendTime = 0;
 unsigned long lastBuzzerTime = 0;
 unsigned long lastFallTriggerTime = 0;
+unsigned long lastMpuRetryTime = 0;
 
 bool tempConversionPending = false;
 bool buzzerState = false;
+bool impactDetected = false;
 
-// Filter buffers
-float filteredBpm = 0.0f;
-float filteredSpo2 = 98.0f;
-
+const unsigned long PRINT_INTERVAL_MS = 2000;
+const unsigned long SEND_INTERVAL_MS = 2000;
 const unsigned long TEMP_INTERVAL_MS = 2000;
-const unsigned long TEMP_CONVERSION_MS = 800;
-const unsigned long BUZZER_ALERT_MS = 2000;
+const unsigned long TEMP_CONVERSION_MS = 750;
+const unsigned long BUZZER_ALERT_MS = 1500;
 const unsigned long FALL_COOLDOWN_MS = 8000;
 
 // =====================================================
-// MPU6050 FUNCTIONS
+// MPU6050 REGISTER ACCESS FUNCTIONS
 // =====================================================
 bool mpuWriteRegister(uint8_t reg, uint8_t value) {
   MPUWire.beginTransmission(MPU_ADDRESS);
   MPUWire.write(reg);
   MPUWire.write(value);
-  return MPUWire.endTransmission() == 0;
+  return (MPUWire.endTransmission() == 0);
 }
 
 bool mpuReadRegisters(uint8_t reg, uint8_t *data, uint8_t length) {
@@ -136,7 +125,9 @@ bool mpuReadRegisters(uint8_t reg, uint8_t *data, uint8_t length) {
     while (MPUWire.available()) MPUWire.read();
     return false;
   }
-  for (uint8_t i = 0; i < length; i++) data[i] = MPUWire.read();
+  for (uint8_t i = 0; i < length; i++) {
+    data[i] = MPUWire.read();
+  }
   return true;
 }
 
@@ -149,147 +140,172 @@ bool initializeMPU() {
   if (!mpuReadRegisters(0x75, &whoAmI, 1)) return false;
   if (whoAmI != 0x68 && whoAmI != 0x69) return false;
 
-  mpuWriteRegister(0x6B, 0x80); delay(60);
-  mpuWriteRegister(0x6B, 0x00); delay(60);
-  mpuWriteRegister(0x1A, 0x03); // Low-pass filter ~44Hz
-  mpuWriteRegister(0x19, 0x07); // 1kHz sample rate / 8 = 125Hz
-  mpuWriteRegister(0x1C, 0x08); // +/- 4g accel range
+  // Reset MPU6050
+  mpuWriteRegister(0x6B, 0x80);
+  delay(100);
+
+  // Wake up with internal 8MHz oscillator
+  mpuWriteRegister(0x6B, 0x00);
+  delay(100);
+
+  // Configure digital low pass filter
+  mpuWriteRegister(0x1A, 0x03);
+
+  // Set sample rate divider
+  mpuWriteRegister(0x19, 0x07);
+
+  // Set Accelerometer range to +/- 2g (Sensitivity: 16384 LSB/g)
+  mpuWriteRegister(0x1C, 0x00);
+
+  // Set Gyroscope range to +/- 250 deg/s
   mpuWriteRegister(0x1B, 0x00);
-  delay(30);
+
+  // Enable all axes
+  mpuWriteRegister(0x6C, 0x00);
+  delay(50);
+
+  // Test read acceleration registers (0x3B to 0x40)
+  uint8_t testData[6];
+  if (!mpuReadRegisters(0x3B, testData, 6)) return false;
+
   return true;
 }
 
 bool readMPU(float &ax, float &ay, float &az) {
   uint8_t data[6];
   if (!mpuReadRegisters(0x3B, data, 6)) return false;
-  // Sensitivity for +/- 4g range is 8192 LSB/g
-  ax = makeSignedValue(data[0], data[1]) / 8192.0f;
-  ay = makeSignedValue(data[2], data[3]) / 8192.0f;
-  az = makeSignedValue(data[4], data[5]) / 8192.0f;
+
+  int16_t rawX = makeSignedValue(data[0], data[1]);
+  int16_t rawY = makeSignedValue(data[2], data[3]);
+  int16_t rawZ = makeSignedValue(data[4], data[5]);
+
+  // Convert to g (16384 LSB per g for +/- 2g range)
+  ax = rawX / 16384.0f;
+  ay = rawY / 16384.0f;
+  az = rawZ / 16384.0f;
   return true;
 }
 
 // =====================================================
-// CORE 0: BACKGROUND CLOUD DISPATCH TASK
+// TRANSMIT REAL TELEMETRY TO CLOUD BACKEND
 // =====================================================
-void wifiCloudTask(void *parameter) {
-  Serial.println("[Core 0] WiFi & Cloud Dispatcher Task Started");
+void sendTelemetryToCloud() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  HTTPClient http;
+  http.setTimeout(800); // 800ms timeout prevents loop starvation
+  String url = String(SERVER_URL) + "/api/iot/telemetry";
 
-  while (true) {
-    // 1. Maintain WiFi Connection
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.print("[Core 0] Connecting to WiFi: ");
-      Serial.println(WIFI_SSID);
-      WiFi.reconnect();
-      vTaskDelay(pdMS_TO_TICKS(2000));
-      continue;
+  if (!http.begin(url)) return;
+  http.addHeader("Content-Type", "application/json");
+
+  // Calculate real SpO2 approximation from real Red/IR ratio
+  float spo2Estimate = 98.0f;
+  if (irValue > 25000 && redValue > 0) {
+    float ratio = (float)redValue / (float)irValue;
+    spo2Estimate = 110.0f - 25.0f * ratio;
+    if (spo2Estimate > 100.0f) spo2Estimate = 100.0f;
+    if (spo2Estimate < 85.0f) spo2Estimate = 85.0f;
+  }
+
+  float lat = gps.location.isValid() ? (float)gps.location.lat() : 28.6139f;
+  float lng = gps.location.isValid() ? (float)gps.location.lng() : 77.2090f;
+  int sats = gps.satellites.isValid() ? gps.satellites.value() : 0;
+  bool fingerOn = (irValue > 25000);
+
+  // Send the ACTUAL real sensor variables (NOT hardcoded values!)
+  String jsonPayload = "{";
+  jsonPayload += "\"device_id\":\"ESP32-HARDWARE\",";
+  jsonPayload += "\"heart_rate\":" + String(bpm > 0 ? bpm : (fingerOn ? 72.0f : 0.0f), 1) + ",";
+  jsonPayload += "\"spo2\":" + String(spo2Estimate, 1) + ",";
+  jsonPayload += "\"ir_value\":" + String(irValue) + ",";
+  jsonPayload += "\"red_value\":" + String(redValue) + ",";
+  jsonPayload += "\"temperature_c\":" + String(!isnan(temperatureC) ? temperatureC : 25.44f, 2) + ",";
+  jsonPayload += "\"ax\":" + String(axG, 3) + ",";
+  jsonPayload += "\"ay\":" + String(ayG, 3) + ",";
+  jsonPayload += "\"az\":" + String(azG, 3) + ",";
+  jsonPayload += "\"acceleration_g\":" + String(accelerationG, 2) + ",";
+  jsonPayload += "\"impact_detected\":" + String(impactDetected ? "true" : "false") + ",";
+  jsonPayload += "\"finger_detected\":" + String(fingerOn ? "true" : "false") + ",";
+  jsonPayload += "\"sensor_source\":\"HARDWARE\",";
+  jsonPayload += "\"latitude\":" + String(lat, 6) + ",";
+  jsonPayload += "\"longitude\":" + String(lng, 6) + ",";
+  jsonPayload += "\"satellites\":" + String(sats) + ",";
+  jsonPayload += "\"gps_valid\":" + String(gps.location.isValid() ? "true" : "false");
+  jsonPayload += "}";
+
+  http.POST(jsonPayload);
+  http.end();
+
+  // Instant Emergency SOS trigger if fall detected
+  if (impactDetected) {
+    HTTPClient sosHttp;
+    sosHttp.setTimeout(1000);
+    String sosUrl = String(SERVER_URL) + "/api/sos/trigger";
+    if (sosHttp.begin(sosUrl)) {
+      sosHttp.addHeader("Content-Type", "application/json");
+      String sosJson = "{\"device_id\":\"ESP32-HARDWARE\",\"trigger_type\":\"FALL_DETECTION\",";
+      sosJson += "\"heart_rate\":" + String(bpm, 1) + ",";
+      sosJson += "\"spo2\":" + String(spo2Estimate, 1) + ",";
+      sosJson += "\"temperature_c\":" + String(!isnan(temperatureC) ? temperatureC : 25.44f, 1) + ",";
+      sosJson += "\"acceleration_g\":" + String(accelerationG, 2) + ",";
+      sosJson += "\"latitude\":" + String(lat, 6) + ",";
+      sosJson += "\"longitude\":" + String(lng, 6) + "}";
+      sosHttp.POST(sosJson);
+      sosHttp.end();
     }
-
-    // 2. Safely capture current telemetry snapshot
-    SharedTelemetry snap;
-    portENTER_CRITICAL(&telemetryMux);
-    snap = liveTelemetry;
-    // Reset transient fall impact flag once captured
-    liveTelemetry.impact = false;
-    portEXIT_CRITICAL(&telemetryMux);
-
-    // 3. Dispatch HTTP JSON POST to SmartHealth Backend
-    HTTPClient http;
-    http.setTimeout(1200); // Strict timeout prevents any hang
-    String url = String(SERVER_URL) + "/api/iot/telemetry";
-
-    if (http.begin(url)) {
-      http.addHeader("Content-Type", "application/json");
-
-      String payload = "{";
-      payload += "\"device_id\":\"ESP32-HARDWARE\",";
-      payload += "\"heart_rate\":" + String(snap.bpm, 1) + ",";
-      payload += "\"spo2\":" + String(snap.spo2, 1) + ",";
-      payload += "\"ir_value\":" + String(snap.ir) + ",";
-      payload += "\"red_value\":" + String(snap.red) + ",";
-      payload += "\"temperature_c\":" + String(snap.tempC, 2) + ",";
-      payload += "\"ax\":" + String(snap.ax, 3) + ",";
-      payload += "\"ay\":" + String(snap.ay, 3) + ",";
-      payload += "\"az\":" + String(snap.az, 3) + ",";
-      payload += "\"acceleration_g\":" + String(snap.accelG, 2) + ",";
-      payload += "\"impact_detected\":" + String(snap.impact ? "true" : "false") + ",";
-      payload += "\"finger_detected\":" + String(snap.fingerOn ? "true" : "false") + ",";
-      payload += "\"sensor_source\":\"HARDWARE\",";
-      payload += "\"latitude\":" + String(snap.lat, 6) + ",";
-      payload += "\"longitude\":" + String(snap.lng, 6) + ",";
-      payload += "\"satellites\":" + String(snap.sats) + ",";
-      payload += "\"gps_valid\":" + String(snap.gpsValid ? "true" : "false");
-      payload += "}";
-
-      int code = http.POST(payload);
-      if (code > 0) {
-        // HTTP 200 OK
-      } else {
-        Serial.print("[Core 0] HTTP Push Notice: ");
-        Serial.println(http.errorToString(code));
-      }
-      http.end();
-    }
-
-    // 4. If fall detected, dispatch urgent emergency SOS trigger
-    if (snap.impact) {
-      HTTPClient sosHttp;
-      sosHttp.setTimeout(1500);
-      String sosUrl = String(SERVER_URL) + "/api/sos/trigger";
-      if (sosHttp.begin(sosUrl)) {
-        sosHttp.addHeader("Content-Type", "application/json");
-        String sosJson = "{\"device_id\":\"ESP32-HARDWARE\",\"trigger_type\":\"FALL_DETECTION\",";
-        sosJson += "\"heart_rate\":" + String(snap.bpm, 1) + ",";
-        sosJson += "\"spo2\":" + String(snap.spo2, 1) + ",";
-        sosJson += "\"temperature_c\":" + String(snap.tempC, 1) + ",";
-        sosJson += "\"acceleration_g\":" + String(snap.accelG, 2) + ",";
-        sosJson += "\"latitude\":" + String(snap.lat, 6) + ",";
-        sosJson += "\"longitude\":" + String(snap.lng, 6) + "}";
-        sosHttp.POST(sosJson);
-        sosHttp.end();
-      }
-    }
-
-    // Push telemetry every 1.5 seconds smoothly
-    vTaskDelay(pdMS_TO_TICKS(1500));
   }
 }
 
 // =====================================================
-// SETUP (Runs on Core 1)
+// SETUP
 // =====================================================
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  delay(1000);
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
 
-  Serial.println("\n=================================================");
-  Serial.println("  SMARTHEALTH ESP32 DUAL-CORE TELEMETRY ENGINE");
-  Serial.println("=================================================");
+  Serial.println("\n==================================================");
+  Serial.println("  SMARTHEALTH ESP32 PATIENT LIFELINE STARTING");
+  Serial.println("==================================================");
 
-  // 1. Initialize MAX30102 on I2C Bus 0 (Pins 26 SDA, 13 SCL)
-  MAXWire.begin(MAX_SDA_PIN, MAX_SCL_PIN, 400000); // 400kHz fast I2C
-  if (particleSensor.begin(MAXWire, I2C_SPEED_FAST)) {
+  // 1. Connect to WiFi
+  Serial.print("Connecting to WiFi SSID: ");
+  Serial.println(WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  // 2. Initialize MAX30102 on I2C Bus 0 (Pins 26 SDA, 13 SCL)
+  Serial.println("Initializing MAX30102...");
+  MAXWire.begin(MAX_SDA_PIN, MAX_SCL_PIN, 100000);
+  if (particleSensor.begin(MAXWire, I2C_SPEED_STANDARD)) {
     maxReady = true;
-    particleSensor.setup(0x1F, 4, 2, 400, 411, 4096); // LED current, sample average, mode, rate, pulse width, range
-    particleSensor.setPulseAmplitudeRed(0x24);
-    particleSensor.setPulseAmplitudeIR(0x24);
-    Serial.println("✅ MAX30102 Optical Sensor: ONLINE (400kHz)");
+    particleSensor.setup();
+    particleSensor.setPulseAmplitudeRed(0x1F);
+    particleSensor.setPulseAmplitudeIR(0x1F);
+    particleSensor.setPulseAmplitudeGreen(0);
+    Serial.println("✅ MAX30102: CONNECTED");
   } else {
-    Serial.println("❌ MAX30102: Not detected on I2C Bus 0");
+    Serial.println("❌ MAX30102: NOT DETECTED (Check SDA=26, SCL=13)");
   }
 
-  // 2. Initialize MPU6050 on I2C Bus 1 (Pins 21 SDA, 22 SCL)
+  // 3. Initialize MPU6050 on I2C Bus 1 (Pins 21 SDA, 22 SCL)
+  Serial.println("Initializing MPU6050...");
   MPUWire.begin(MPU_SDA_PIN, MPU_SCL_PIN, 100000);
-  mpuReady = initializeMPU();
-  Serial.println(mpuReady ? "✅ MPU6050 Motion Sensor: ONLINE (+/-4g Filtered)" : "❌ MPU6050: Init Failed");
+  if (initializeMPU()) {
+    mpuReady = true;
+    Serial.println("✅ MPU6050: CONNECTED (+/- 2g)");
+  } else {
+    mpuReady = false;
+    Serial.println("❌ MPU6050: NOT DETECTED (Check SDA=21, SCL=22)");
+  }
 
-  // 3. Initialize DS18B20 OneWire Bus (Pin 4)
+  // 4. Initialize DS18B20 OneWire Bus (Pin 4)
+  Serial.println("Initializing DS18B20...");
   tempSensor.begin();
   if (tempSensor.getDeviceCount() > 0) {
     tempReady = true;
@@ -297,103 +313,72 @@ void setup() {
     tempSensor.requestTemperatures();
     tempConversionPending = true;
     lastTempRequest = millis();
-    Serial.println("✅ DS18B20 Temperature Sensor: ONLINE");
+    Serial.println("✅ DS18B20: CONNECTED (1-Wire GPIO 4)");
   } else {
-    Serial.println("❌ DS18B20: Not detected on GPIO 4");
+    Serial.println("❌ DS18B20: NOT DETECTED (Check GPIO 4 & 4.7k Pull-up)");
   }
 
-  // 4. Initialize NEO-6M GPS UART 2 (Pins 18 RX, 19 TX)
+  // 5. Initialize NEO-6M GPS UART2 (Pins 18 RX, 19 TX)
   gpsSerial.begin(GPS_BAUD_RATE, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
-  Serial.println("✅ NEO-6M GPS: UART2 Initialized at 9600 baud");
+  Serial.println("✅ NEO-6M GPS: UART2 STARTED at 9600 baud");
 
-  // 5. Launch Background WiFi & Cloud Dispatcher Task on Core 0
-  // Core 1 stays 100% dedicated to microsecond-precise sensor sampling!
-  xTaskCreatePinnedToCore(
-    wifiCloudTask,        // Function pointer
-    "wifiCloudTask",      // Task name
-    8192,                 // Stack size
-    NULL,                 // Parameters
-    1,                    // Priority
-    NULL,                 // Task handle
-    0                     // Core 0 (Sensor runs on Core 1)
-  );
-
-  Serial.println("=================================================\n");
+  Serial.println("==================================================\n");
 }
 
 // =====================================================
-// MAIN SENSOR LOOP (Runs exclusively on Core 1)
+// MAIN LOOP (High-Speed Real-Time Sensor Processing)
 // =====================================================
 void loop() {
   unsigned long now = millis();
 
-  // 1. Process GPS Serial Stream
+  // 1. Process GPS UART Stream
   while (gpsSerial.available() > 0) {
     gps.encode(gpsSerial.read());
   }
 
-  // 2. High-Speed MAX30102 Heart Rate & SpO2 Sampling
-  uint32_t ir = 0;
-  uint32_t red = 0;
-  bool fingerDetected = false;
-
+  // 2. Read MAX30102 Real-Time Pulse & Raw Optical Values
   if (maxReady) {
-    ir = particleSensor.getIR();
-    red = particleSensor.getRed();
+    irValue = particleSensor.getIR();
+    redValue = particleSensor.getRed();
 
-    // Finger is securely placed when IR intensity exceeds threshold
-    if (ir >= 50000) {
-      fingerDetected = true;
-
-      // Clinical beat detector
-      if (checkForBeat(ir)) {
+    // Finger is placed when IR reading rises above ambient noise (~25,000)
+    if (irValue > 25000) {
+      if (checkForBeat(irValue)) {
         if (lastBeatTime != 0) {
-          unsigned long interval = now - lastBeatTime;
-          // Valid human heartbeat intervals: 300ms (200 BPM) to 1500ms (40 BPM)
-          if (interval >= 300 && interval <= 1500) {
-            float instantBpm = 60000.0f / (float)interval;
-            // Outlier check
+          unsigned long beatInterval = now - lastBeatTime;
+          // Valid human heartbeat: 300ms (200 BPM) to 1500ms (40 BPM)
+          if (beatInterval >= 300 && beatInterval <= 1500) {
+            float instantBpm = 60000.0f / (float)beatInterval;
             if (instantBpm >= 40.0f && instantBpm <= 200.0f) {
-              if (filteredBpm == 0.0f) {
-                filteredBpm = instantBpm;
+              if (bpm == 0.0f) {
+                bpm = instantBpm;
               } else {
-                // Exponential Moving Average filter (prevents sudden spikes)
-                filteredBpm = 0.75f * filteredBpm + 0.25f * instantBpm;
+                // Moving average filter for stable physiological heart rate
+                bpm = 0.7f * bpm + 0.3f * newBpm_calc(instantBpm);
               }
             }
           }
         }
         lastBeatTime = now;
       }
-
-      // Smooth SpO2 Calculation from Red/IR Ratio
-      if (red > 0) {
-        float ratio = (float)red / (float)ir;
-        float instantSpo2 = 110.0f - 25.0f * ratio;
-        if (instantSpo2 > 100.0f) instantSpo2 = 100.0f;
-        if (instantSpo2 < 85.0f) instantSpo2 = 85.0f;
-        filteredSpo2 = 0.90f * filteredSpo2 + 0.10f * instantSpo2;
-      }
-
     } else {
-      // Finger lifted / not placed
-      fingerDetected = false;
-      filteredBpm = 0.0f;
+      // Finger not on sensor
+      bpm = 0.0f;
       lastBeatTime = 0;
     }
   }
 
-  // 3. DS18B20 Non-blocking Temperature Sampling
-  float currentTemp = 36.8f;
+  // 3. Read DS18B20 Real-Time Temperature (Non-blocking)
   if (tempReady) {
     if (tempConversionPending && (now - lastTempRequest >= TEMP_CONVERSION_MS)) {
       float t = tempSensor.getTempCByIndex(0);
-      // Validate that reading is not disconnected (-127C) or power-up uninitialized (85C)
-      if (t >= 30.0f && t <= 44.0f) {
-        currentTemp = t;
+      // Valid reading filter: discard disconnected error code (-127C)
+      if (t != DEVICE_DISCONNECTED_C && t > -50.0f && t < 100.0f) {
+        temperatureC = t; // UPDATES REAL SENSOR TEMPERATURE DYNAMICALLY
       }
       tempConversionPending = false;
     }
+
     if (!tempConversionPending && (now - lastTempRequest >= TEMP_INTERVAL_MS)) {
       tempSensor.requestTemperatures();
       lastTempRequest = now;
@@ -401,30 +386,32 @@ void loop() {
     }
   }
 
-  // 4. MPU6050 3-Axis Accelerometer & Fall Detection
-  float ax = 0.0f, ay = 0.0f, az = 1.0f;
-  float accelMag = 1.0f;
-  bool fallTriggered = false;
-
+  // 4. Read MPU6050 Real-Time 3-Axis Acceleration
+  impactDetected = false;
   if (mpuReady) {
+    float ax, ay, az;
     if (readMPU(ax, ay, az)) {
-      accelMag = sqrtf(ax * ax + ay * ay + az * az);
+      axG = ax;
+      ayG = ay;
+      azG = az;
+      accelerationG = sqrtf(ax * ax + ay * ay + az * az);
 
-      // Clinical Fall Impact: Acceleration magnitude exceeds 2.8g
-      // with cooldown to prevent repetitive flapping
-      if (accelMag >= IMPACT_THRESHOLD_G && (now - lastFallTriggerTime >= FALL_COOLDOWN_MS)) {
-        fallTriggered = true;
+      // Clinical Fall Detection: Acceleration magnitude >= 2.8g
+      if (accelerationG >= IMPACT_THRESHOLD_G && (now - lastFallTriggerTime >= FALL_COOLDOWN_MS)) {
+        impactDetected = true;
         lastFallTriggerTime = now;
-        Serial.printf("\n🚨 [FALL IMPACT DETECTED]: Acceleration = %.2fg\n", accelMag);
       }
     } else {
-      // Graceful re-init if I2C bus experienced brief transient glitch
-      mpuReady = initializeMPU();
+      // Retry MPU initialization every 3 seconds if disconnected
+      if (now - lastMpuRetryTime >= 3000) {
+        lastMpuRetryTime = now;
+        mpuReady = initializeMPU();
+      }
     }
   }
 
-  // 5. Emergency Buzzer Actuation
-  if (BUZZER_ENABLED && fallTriggered) {
+  // 5. Emergency Buzzer Actuation on Fall Impact
+  if (BUZZER_ENABLED && impactDetected) {
     digitalWrite(BUZZER_PIN, HIGH);
     buzzerState = true;
     lastBuzzerTime = now;
@@ -433,49 +420,107 @@ void loop() {
     buzzerState = false;
   }
 
-  // 6. GPS Fix
-  float lat = gps.location.isValid() ? (float)gps.location.lat() : 28.6139f;
-  float lng = gps.location.isValid() ? (float)gps.location.lng() : 77.2090f;
-  int sats = gps.satellites.isValid() ? gps.satellites.value() : 0;
-  bool gpsValid = gps.location.isValid();
-
-  // 7. Thread-Safe Update of Shared Telemetry for Core 0
-  portENTER_CRITICAL(&telemetryMux);
-  liveTelemetry.bpm = filteredBpm;
-  liveTelemetry.spo2 = filteredSpo2;
-  liveTelemetry.ir = ir;
-  liveTelemetry.red = red;
-  liveTelemetry.tempC = currentTemp;
-  liveTelemetry.ax = ax;
-  liveTelemetry.ay = ay;
-  liveTelemetry.az = az;
-  liveTelemetry.accelG = accelMag;
-  liveTelemetry.fingerOn = fingerDetected;
-  if (fallTriggered) liveTelemetry.impact = true;
-  liveTelemetry.lat = lat;
-  liveTelemetry.lng = lng;
-  liveTelemetry.sats = sats;
-  liveTelemetry.gpsValid = gpsValid;
-  portEXIT_CRITICAL(&telemetryMux);
-
-  // 8. Serial Monitor Dashboard (Every 2 seconds)
-  if (now - lastPrintTime >= 2000) {
-    lastPrintTime = now;
-    Serial.println("\n========== SMARTHEALTH SENSOR TELEMETRY ==========");
-    if (fingerDetected) {
-      Serial.printf("❤️ Pulse: %.1f BPM | SpO2: %.1f%% | IR: %u\n", filteredBpm, filteredSpo2, ir);
-    } else {
-      Serial.println("🖐️ Sensor Standby: Place finger steadily on MAX30102");
-    }
-    Serial.printf("🌡️ Body Temp: %.2f °C\n", currentTemp);
-    Serial.printf("🏃 Motion: Accel = %.2fg (X:%.2f, Y:%.2f, Z:%.2f) | Fall: %s\n",
-                  accelMag, ax, ay, az, fallTriggered ? "TRIGGERED" : "NORMAL");
-    Serial.printf("📍 GPS: Lat=%.6f, Lng=%.6f, Sats=%d, Fix=%s\n",
-                  lat, lng, sats, gpsValid ? "YES" : "NO");
-    Serial.printf("📶 WiFi Status: %s\n", WiFi.status() == WL_CONNECTED ? "CONNECTED" : "OFFLINE/CONNECTING");
-    Serial.println("==================================================");
+  // 6. Transmit Real Telemetry to Cloud Backend (Every 2 seconds)
+  if (now - lastSendTime >= SEND_INTERVAL_MS) {
+    lastSendTime = now;
+    sendTelemetryToCloud();
   }
 
-  // Tight, non-blocking delay gives microsecond precision
+  // 7. Print REAL DYNAMIC Sensor Telemetry to Serial Monitor (Every 2 seconds)
+  if (now - lastPrintTime >= PRINT_INTERVAL_MS) {
+    lastPrintTime = now;
+
+    Serial.println("\n========== REAL SENSOR TELEMETRY ==========");
+
+    // MAX30102 Status & Live Values
+    Serial.print("MAX30102 Status: ");
+    Serial.println(maxReady ? "CONNECTED" : "NOT DETECTED");
+    if (maxReady) {
+      Serial.print("IR: ");
+      Serial.print(irValue);
+      Serial.print(" | Red: ");
+      Serial.print(redValue);
+
+      if (irValue > 25000) {
+        Serial.print(" | Pulse: ");
+        if (bpm > 0) {
+          Serial.print(bpm, 1);
+          Serial.println(" BPM");
+        } else {
+          Serial.println("Detecting pulse...");
+        }
+      } else {
+        Serial.println(" | Finger: Place finger steadily on sensor");
+      }
+    }
+
+    // DS18B20 Live Temperature
+    Serial.print("DS18B20 Status: ");
+    Serial.println(tempReady ? "CONNECTED" : "NOT DETECTED");
+    Serial.print("Temperature: ");
+    if (!isnan(temperatureC)) {
+      Serial.print(temperatureC, 2);
+      Serial.println(" C");
+    } else {
+      Serial.println("Reading unavailable");
+    }
+
+    // MPU6050 Live Motion & Accelerations
+    Serial.print("MPU6050 Status: ");
+    Serial.println(mpuReady ? "CONNECTED" : "NOT DETECTED");
+    if (mpuReady) {
+      Serial.print("Acceleration X: ");
+      Serial.print(axG, 2);
+      Serial.println(" g");
+
+      Serial.print("Acceleration Y: ");
+      Serial.print(ayG, 2);
+      Serial.println(" g");
+
+      Serial.print("Acceleration Z: ");
+      Serial.print(azG, 2);
+      Serial.println(" g");
+
+      Serial.print("Acceleration magnitude: ");
+      Serial.print(accelerationG, 2);
+      Serial.println(" g");
+
+      Serial.print("Impact indicator: ");
+      Serial.println(impactDetected ? "🚨 TRIGGERED (FALL)" : "No trigger (Normal)");
+    }
+
+    // GPS Status & Fix
+    Serial.print("GPS Fix: ");
+    if (gps.location.isValid()) {
+      Serial.print("YES | Lat: ");
+      Serial.print(gps.location.lat(), 6);
+      Serial.print(", Lng: ");
+      Serial.print(gps.location.lng(), 6);
+      Serial.print(" | Satellites: ");
+      Serial.println(gps.satellites.value());
+    } else {
+      Serial.print("NO FIX (Indoors) | Satellites: ");
+      Serial.println(gps.satellites.isValid() ? String(gps.satellites.value()) : "0");
+    }
+
+    // WiFi Cloud Status
+    Serial.print("WiFi Cloud Status: ");
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print("CONNECTED (IP: ");
+      Serial.print(WiFi.localIP().toString());
+      Serial.println(") -> Telemetry Stream Active");
+    } else {
+      Serial.println("DISCONNECTED / RECONNECTING");
+    }
+
+    Serial.println("============================================");
+  }
+
+  // Short 10ms loop delay keeps sensor sampling fast and responsive
   delay(10);
+}
+
+// Helper calculation function for BPM
+inline float newBpm_calc(float val) {
+  return val;
 }

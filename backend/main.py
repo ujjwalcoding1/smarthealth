@@ -156,14 +156,15 @@ async def ingest_iot_telemetry(data: TelemetryPayload):
 
     # Physiological sanitization to eliminate sensor noise & collapses
     ir = raw_dict.get("ir_value", 0)
-    if ir > 0 and ir < 50000:
+    if ir > 0 and ir < 25000:
         raw_dict["finger_detected"] = False
     else:
         raw_dict["finger_detected"] = True
 
-    temp = raw_dict.get("temperature_c", 36.8)
-    if temp < 30.0 or temp > 45.0:
-        raw_dict["temperature_c"] = 36.8
+    # Validate temperature: Discard disconnected 1-Wire error codes (-127C or -55C)
+    temp = raw_dict.get("temperature_c", 25.4)
+    if temp < -50.0 or temp > 100.0 or temp == -127.0:
+        raw_dict["temperature_c"] = 25.4  # Ambient reference if disconnected
 
     # Ensure SpO2 is within reasonable bounds
     spo2 = raw_dict.get("spo2", 98.0)
