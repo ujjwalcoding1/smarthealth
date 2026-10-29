@@ -55,12 +55,51 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        settings.setGeolocationEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         // Attach Native Android Bridge
         webView.addJavascriptInterface(new AndroidBridge(this), "AndroidNative");
 
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url == null) return false;
+                if (url.startsWith("tel:")) {
+                    try {
+                        Intent intent;
+                        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                            intent = new Intent(Intent.ACTION_CALL, Uri.parse(url));
+                        } else {
+                            intent = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
+                        }
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                } else if (url.startsWith("mailto:") || url.startsWith("sms:") || url.startsWith("geo:") || url.startsWith("whatsapp://")) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this, "No supported app found for link", Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                } else if (url.contains("wa.me") || url.contains("maps.google.com") || url.contains("google.com/maps") || (url.startsWith("http") && !url.contains("localhost") && !url.contains("127.0.0.1") && !url.contains("10.0.2.2"))) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+                return false;
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient());
 
         // Load bundled mobile web application (or cloud URL)
@@ -149,6 +188,34 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void showToast(String msg) {
             runOnUiThread(() -> Toast.makeText(mContext, msg, Toast.LENGTH_SHORT).show());
+        }
+
+        @JavascriptInterface
+        public void openExternalUrl(String url) {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mContext.startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(mContext, "Error opening link: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openWhatsApp(String phone, String text) {
+            runOnUiThread(() -> {
+                try {
+                    String cleanPhone = phone.replaceAll("[^0-9]", "");
+                    String url = "https://wa.me/" + cleanPhone + "?text=" + Uri.encode(text);
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mContext.startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(mContext, "Cannot open WhatsApp: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
         }
     }
 

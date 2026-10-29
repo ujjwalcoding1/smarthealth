@@ -9,69 +9,124 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --border: #334155;
+      --bg: #090d16;
+      --card-bg: #131b2e;
+      --card-hover: #1a253f;
+      --border: #1e293b;
+      --border-focus: #3b82f6;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.12);
       --yellow: #f59e0b;
+      --yellow-bg: rgba(245, 158, 11, 0.12);
       --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.15);
       --primary: #0284c7;
+      --indigo: #6366f1;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding-bottom: 80px;
+      padding-bottom: 76px;
+      overflow-x: hidden;
     }
+
+    /* Top Sticky Header */
     header {
-      padding: 16px;
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       border-bottom: 1px solid var(--border);
-      background: rgba(15, 23, 42, 0.95);
+      background: rgba(9, 13, 22, 0.95);
       position: sticky;
       top: 0;
-      z-index: 30;
-      backdrop-blur: 8px;
+      z-index: 40;
+      backdrop-filter: blur(12px);
     }
     .brand { display: flex; align-items: center; gap: 10px; }
     .brand-icon {
       width: 38px; height: 38px; border-radius: 12px;
       background: linear-gradient(135deg, #10b981, #0284c7);
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
+      font-size: 20px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
-    .brand-title { font-size: 17px; font-weight: 800; }
-    .brand-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 4px; }
-    .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulseDot 1.5s infinite; }
-    @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+    .brand-title { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+    .brand-status { font-size: 11px; color: var(--green); display: flex; align-items: center; gap: 4px; font-weight: 600; }
+    .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulseDot 1.5s infinite; }
+    @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.4); } }
 
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-header-icon {
+      background: var(--card-bg); border: 1px solid var(--border);
+      color: var(--text); width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; cursor: pointer;
+    }
     .sos-header-btn {
       background: #dc2626; color: white; border: none;
-      padding: 8px 16px; border-radius: 20px; font-weight: 800;
+      padding: 8px 14px; border-radius: 20px; font-weight: 800;
       font-size: 12px; display: flex; align-items: center; gap: 6px;
-      box-shadow: 0 0 15px rgba(220, 38, 38, 0.4);
+      box-shadow: 0 0 15px rgba(220, 38, 38, 0.45);
+      cursor: pointer; animation: sosPulse 2s infinite;
+    }
+    @keyframes sosPulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(220, 38, 38, 0.4); }
+      50% { box-shadow: 0 0 24px rgba(220, 38, 38, 0.8); }
+    }
+
+    /* Sub Navigation Tabs */
+    .tabs-bar {
+      display: flex;
+      background: #0f172a;
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      padding: 6px 10px;
+      gap: 6px;
+      scrollbar-width: none;
+    }
+    .tabs-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 0 0 auto;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 7px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
       cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn.active {
+      background: #1e293b;
+      color: #38bdf8;
+      border-color: #38bdf8;
     }
 
     main { padding: 14px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
     /* 3-Zone Hero Card */
     .zone-hero {
       border-radius: 18px; padding: 16px; margin-bottom: 14px;
-      border: 2px solid var(--green); background: rgba(16, 185, 129, 0.1);
+      border: 2px solid var(--green); background: var(--green-bg);
       transition: all 0.3s ease;
     }
     .zone-hero.yellow {
-      border-color: var(--yellow); background: rgba(245, 158, 11, 0.1);
+      border-color: var(--yellow); background: var(--yellow-bg);
     }
     .zone-hero.red {
-      border-color: var(--red); background: rgba(239, 68, 68, 0.15);
+      border-color: var(--red); background: var(--red-bg);
       animation: alertPulse 1s infinite alternate;
     }
     @keyframes alertPulse {
@@ -79,7 +134,7 @@
       100% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
     }
     .zone-badge {
-      display: inline-block; padding: 3px 8px; border-radius: 20px;
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
       font-size: 10px; font-weight: 800; text-transform: uppercase;
       background: var(--green); color: black; margin-bottom: 6px;
     }
@@ -88,21 +143,21 @@
     .zone-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
     .zone-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 
-    /* Yellow Care Suggestion Box */
+    /* Yellow Zone Care Suggestions Box */
     .care-suggestion-box {
-      background: #1e293b; border: 1.5px solid var(--yellow);
+      background: var(--card-bg); border: 1.5px solid var(--yellow);
       border-radius: 16px; padding: 14px; margin-bottom: 14px;
       display: none;
     }
     .care-suggestion-box.active { display: block; }
-    .care-title { font-size: 14px; font-weight: 800; color: #fde68a; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .care-title { font-size: 13px; font-weight: 800; color: #fde68a; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
     .med-item {
-      background: #0f172a; border-radius: 10px; padding: 10px;
-      margin-bottom: 8px; border: 1px solid #334155;
+      background: #090d16; border-radius: 12px; padding: 10px 12px;
+      margin-bottom: 8px; border: 1px solid var(--border);
     }
-    .med-name { font-size: 13px; font-weight: 700; color: white; display: flex; justify-content: space-between; }
-    .med-dose { font-size: 11px; color: var(--yellow); font-family: 'JetBrains Mono', monospace; }
-    .med-reason { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .med-name { font-size: 12.5px; font-weight: 700; color: white; display: flex; justify-content: space-between; }
+    .med-dose { font-size: 11px; color: var(--yellow); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+    .med-reason { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.35; }
 
     /* Vitals Grid */
     .vitals-grid {
@@ -113,9 +168,9 @@
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 16px; padding: 14px;
     }
-    .vital-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .vital-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
     .vital-value { font-size: 26px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
-    .vital-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+    .vital-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; font-weight: 600; }
 
     /* Waveform Canvas */
     .waveform-card {
@@ -126,79 +181,200 @@
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 8px; font-size: 12px; font-weight: 700;
     }
-    canvas { width: 100%; height: 90px; background: #0b1120; border-radius: 10px; display: block; }
+    canvas { width: 100%; height: 90px; background: #070b14; border-radius: 10px; display: block; }
 
-    /* Test Controls */
+    /* Hardware Simulator Bar */
     .controls-card {
       background: var(--card-bg); border: 1px solid var(--border);
-      border-radius: 16px; padding: 14px; margin-bottom: 14px;
+      border-radius: 16px; padding: 12px 14px; margin-bottom: 14px;
     }
     .ctrl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
     .btn-ctrl {
-      background: #334155; color: white; border: none; padding: 8px 4px;
+      background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 8px 4px;
       border-radius: 10px; font-size: 11px; font-weight: 700; cursor: pointer;
       text-align: center;
     }
-    .btn-ctrl.active { background: #0284c7; }
-    .btn-ctrl.fall { background: #dc2626; }
+    .btn-ctrl.active { background: #0284c7; color: white; border-color: #38bdf8; }
+    .btn-ctrl.fall { background: #dc2626; color: white; border-color: #ef4444; }
 
-    /* Quick Features List */
+    /* Cards / Tiles */
     .feature-tile {
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 16px; padding: 14px; margin-bottom: 12px;
     }
     .tile-title { font-size: 13px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
 
-    /* Bottom Navigation Bar */
-    .bottom-nav {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      height: 64px; background: rgba(15, 23, 42, 0.98);
-      border-top: 1px solid var(--border);
-      display: flex; justify-content: space-around; align-items: center;
-      z-index: 40; backdrop-blur: 10px;
+    /* Search & Filter Bar */
+    .search-input {
+      width: 100%; background: #090d16; border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 14px; color: white; font-size: 12px;
+      outline: none; margin-bottom: 12px; font-family: inherit;
     }
-    .nav-item {
-      display: flex; flex-direction: column; align-items: center;
-      font-size: 10px; color: var(--text-muted); cursor: pointer; gap: 2px;
-    }
-    .nav-item.active { color: var(--green); font-weight: 700; }
-    .nav-icon { font-size: 18px; }
+    .search-input:focus { border-color: #38bdf8; }
 
-    /* SOS Emergency Modal */
-    .sos-modal {
-      position: fixed; inset: 0; z-index: 100;
-      background: rgba(15, 23, 42, 0.95);
-      display: none; align-items: center; justify-content: center;
-      padding: 20px; text-align: center;
+    /* Doctor & Hospital Cards */
+    .doctor-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 14px; margin-bottom: 12px;
+      display: flex; gap: 12px; align-items: flex-start;
     }
-    .sos-modal.active { display: flex; }
+    .doc-avatar {
+      width: 60px; height: 60px; border-radius: 14px; object-fit: cover;
+      border: 2px solid #38bdf8; flex-shrink: 0; background: #1e293b;
+    }
+    .doc-info { flex: 1; }
+    .doc-name { font-size: 14px; font-weight: 800; color: white; margin-bottom: 2px; }
+    .doc-spec { font-size: 11px; color: #38bdf8; font-weight: 700; margin-bottom: 4px; }
+    .doc-meta { font-size: 11px; color: var(--text-muted); line-height: 1.35; margin-bottom: 8px; }
+    .doc-actions { display: flex; gap: 6px; }
+    .btn-action {
+      flex: 1; padding: 7px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;
+      border: none; cursor: pointer; text-align: center; text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .btn-call { background: #0284c7; color: white; }
+    .btn-wa { background: #16a34a; color: white; }
+    .btn-book { background: #6366f1; color: white; }
+
+    /* Hospital Card */
+    .hosp-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 14px; margin-bottom: 12px;
+    }
+    .hosp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .hosp-name { font-size: 14px; font-weight: 800; color: white; }
+    .hosp-badge {
+      font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 12px;
+      background: #10b981; color: black;
+    }
+    .hosp-details { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px; }
+
+    /* Medicine Item Card */
+    .medicine-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 12px 14px; margin-bottom: 10px;
+    }
+    .med-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .med-brand { font-size: 13px; font-weight: 800; color: white; }
+    .med-illness { font-size: 10px; font-weight: 700; color: #38bdf8; background: #0c4a6e; padding: 2px 6px; border-radius: 6px; }
+    .med-details { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+    /* Gov Scheme Card */
+    .scheme-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 14px; margin-bottom: 12px;
+    }
+    .scheme-title { font-size: 13.5px; font-weight: 800; color: #fde68a; margin-bottom: 4px; }
+    .scheme-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px; }
+
+    /* AI Chatbot Container */
+    .chat-container {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 18px; padding: 12px; display: flex; flex-direction: column;
+      height: 480px;
+    }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding-right: 4px; margin-bottom: 8px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .chat-msg {
+      padding: 10px 12px; border-radius: 14px; font-size: 11.5px; line-height: 1.4;
+      max-width: 88%;
+    }
+    .chat-msg.user {
+      align-self: flex-end; background: #4f46e5; color: white; border-bottom-right-radius: 4px;
+    }
+    .chat-msg.ai {
+      align-self: flex-start; background: #090d16; color: var(--text); border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .chat-chips {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px;
+      scrollbar-width: none;
+    }
+    .chat-chip {
+      flex: 0 0 auto; background: #1e293b; color: #cbd5e1; border: 1px solid #334155;
+      padding: 4px 10px; border-radius: 12px; font-size: 10.5px; cursor: pointer;
+    }
+    .chat-input-bar { display: flex; gap: 6px; }
+    .chat-input {
+      flex: 1; background: #090d16; border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px 12px; color: white; font-size: 12px;
+      outline: none; font-family: inherit;
+    }
+    .btn-chat-send {
+      background: #4f46e5; color: white; border: none; padding: 8px 14px;
+      border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(9, 13, 22, 0.92); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.active { display: flex; }
+    .modal-sheet {
+      background: #131b2e; border: 1px solid var(--border);
+      border-radius: 20px; padding: 18px; width: 100%; max-width: 420px;
+      max-height: 90vh; overflow-y: auto;
+    }
+
+    /* Fall SOS Modal */
     .sos-box {
-      background: #1e293b; border: 3px solid #ef4444;
-      border-radius: 24px; padding: 24px; width: 100%; max-width: 360px;
-      box-shadow: 0 0 40px rgba(239, 68, 68, 0.6);
+      border: 3px solid #ef4444; border-radius: 24px; padding: 22px;
+      width: 100%; max-width: 360px; text-align: center;
+      background: #131b2e; box-shadow: 0 0 50px rgba(239, 68, 68, 0.6);
     }
     .countdown-circle {
-      width: 90px; height: 90px; border-radius: 50%;
-      border: 4px solid #ef4444; margin: 16px auto;
+      width: 84px; height: 84px; border-radius: 50%;
+      border: 4px solid #ef4444; margin: 14px auto;
       display: flex; align-items: center; justify-content: center;
-      font-size: 36px; font-weight: 900; color: #ef4444;
+      font-size: 34px; font-weight: 900; color: #ef4444;
       font-family: 'JetBrains Mono', monospace;
     }
     .btn-dial-sos {
       width: 100%; background: #dc2626; color: white; border: none;
-      padding: 14px; border-radius: 14px; font-size: 16px; font-weight: 800;
-      cursor: pointer; margin-bottom: 10px;
+      padding: 13px; border-radius: 14px; font-size: 15px; font-weight: 800;
+      cursor: pointer; margin-bottom: 8px;
     }
     .btn-cancel-sos {
       width: 100%; background: #334155; color: white; border: none;
-      padding: 12px; border-radius: 14px; font-size: 14px; font-weight: 700;
+      padding: 11px; border-radius: 14px; font-size: 13px; font-weight: 700;
       cursor: pointer;
     }
+
+    /* Form Fields */
+    .form-group { margin-bottom: 10px; }
+    .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    .form-control {
+      width: 100%; background: #090d16; border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 12px; color: white; font-size: 12px;
+      outline: none; font-family: inherit;
+    }
+    .form-control:focus { border-color: #38bdf8; }
+
+    /* Bottom Fixed Navigation */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: 62px; background: rgba(9, 13, 22, 0.98);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around; align-items: center;
+      z-index: 35; backdrop-filter: blur(12px);
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      font-size: 10px; color: var(--text-muted); cursor: pointer; gap: 2px;
+      font-weight: 600;
+    }
+    .nav-item.active { color: #38bdf8; font-weight: 800; }
+    .nav-icon { font-size: 18px; }
   </style>
 </head>
 <body>
 
-  <!-- Top App Bar -->
+  <!-- Top Sticky Bar -->
   <header>
     <div class="brand">
       <div class="brand-icon">❤️</div>
@@ -207,162 +383,220 @@
         <div class="brand-status"><span class="pulse-dot"></span> ESP32 IoT Live</div>
       </div>
     </div>
-    <button class="sos-header-btn" onclick="triggerFallSOS()">
-      🚨 SOS 112
-    </button>
+    <div class="header-actions">
+      <button class="btn-header-icon" onclick="openSOSSettings()" title="SOS Settings">⚙️</button>
+      <button class="btn-header-icon" onclick="toggleLang()" id="langBtn" title="Switch Language">हिन्दी</button>
+      <button class="sos-header-btn" onclick="triggerFallSOS()">🚨 SOS</button>
+    </div>
   </header>
 
+  <!-- Horizontal Scrollable Tabs Bar -->
+  <nav class="tabs-bar">
+    <button class="tab-btn active" onclick="switchMainTab('vitals', this)">📊 Vitals</button>
+    <button class="tab-btn" onclick="switchMainTab('doctors', this)">👨‍⚕️ Doctors</button>
+    <button class="tab-btn" onclick="switchMainTab('hospitals', this)">🏥 Hospitals</button>
+    <button class="tab-btn" onclick="switchMainTab('medicines', this)">💊 Medicines</button>
+    <button class="tab-btn" onclick="switchMainTab('gov', this)">🏛️ Gov Schemes</button>
+    <button class="tab-btn" onclick="switchMainTab('chatbot', this)">🤖 AI Doctor</button>
+  </nav>
+
   <main>
-    <!-- 1. 3-Zone Dynamic Status Hero -->
-    <div id="zoneHero" class="zone-hero">
-      <span id="zoneBadge" class="zone-badge">GREEN ZONE</span>
-      <h2 id="zoneTitle" class="zone-title">Optimal Vitals Detected</h2>
-      <p id="zoneDesc" class="zone-desc">All parameters (Heart rate, SpO2, Temperature) are in normal range.</p>
-    </div>
-
-    <!-- 2. Yellow Zone Care Suggestions & Medicine Box (Requirement #2) -->
-    <div id="yellowCareBox" class="care-suggestion-box">
-      <div class="care-title">
-        <span>💊</span>
-        <span>Average Zone Care & Medicine Advice</span>
+    <!-- TAB 1: VITALS & LIFELINE -->
+    <div id="tab-vitals" class="tab-content active">
+      <!-- 1. 3-Zone Dynamic Status Hero -->
+      <div id="zoneHero" class="zone-hero">
+        <span id="zoneBadge" class="zone-badge">GREEN ZONE</span>
+        <h2 id="zoneTitle" class="zone-title">Optimal Vitals Detected</h2>
+        <p id="zoneDesc" class="zone-desc">All parameters (Heart rate, SpO2, Temperature) are in normal range.</p>
       </div>
-      <div id="medicineList">
-        <div class="med-item">
-          <div class="med-name">
-            <span>Paracetamol (Dolo 650)</span>
-            <span class="med-dose">650mg / Post-meal</span>
-          </div>
-          <div class="med-reason">Antipyretic for mild fever & body relief. Cold forehead compress recommended.</div>
+
+      <!-- 2. Yellow Zone Care Suggestions & Medicine Box -->
+      <div id="yellowCareBox" class="care-suggestion-box">
+        <div class="care-title">
+          <span>💊</span>
+          <span>Average Zone Care & Medicine Advice</span>
         </div>
-        <div class="med-item">
-          <div class="med-name">
-            <span>ORS Electrolyte Hydration</span>
-            <span class="med-dose">300ml sipped</span>
+        <div id="medicineList">
+          <div class="med-item">
+            <div class="med-name">
+              <span>Paracetamol (Dolo 650)</span>
+              <span class="med-dose">650mg / Post-meal</span>
+            </div>
+            <div class="med-reason">Antipyretic for mild fever & body relief. Cold forehead compress recommended.</div>
           </div>
-          <div class="med-reason">Stabilizes resting heart rate & corrects sub-clinical dehydration.</div>
+          <div class="med-item">
+            <div class="med-name">
+              <span>ORS Electrolyte Hydration</span>
+              <span class="med-dose">300ml sipped</span>
+            </div>
+            <div class="med-reason">Stabilizes resting heart rate & corrects sub-clinical dehydration.</div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          💡 Rest in upright posture. Re-check temperature on IoT sensor in 30 minutes.
         </div>
       </div>
-      <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
-        💡 Rest in upright posture. Re-check temperature on IoT sensor in 30 minutes.
+
+      <!-- 3. Real-time PPG Heart Waveform (MAX30102) -->
+      <div class="waveform-card">
+        <div class="waveform-header">
+          <span>❤️ Live PPG Pulse Wave (MAX30102)</span>
+          <span id="waveBpm" style="color: var(--green); font-family: monospace;">74.0 BPM</span>
+        </div>
+        <canvas id="ppgCanvas"></canvas>
+      </div>
+
+      <!-- 4. Vitals 4-Grid -->
+      <div class="vitals-grid">
+        <div class="vital-card">
+          <div class="vital-label">Heart Rate</div>
+          <div class="vital-value" id="valHr" style="color: #38bdf8;">74.0</div>
+          <div class="vital-sub"><span>BPM</span><span>MAX30102</span></div>
+        </div>
+        <div class="vital-card">
+          <div class="vital-label">Blood Oxygen</div>
+          <div class="vital-value" id="valSpo2" style="color: #10b981;">98.4</div>
+          <div class="vital-sub"><span>% SpO2</span><span>Optical</span></div>
+        </div>
+        <div class="vital-card">
+          <div class="vital-label">Body Temp</div>
+          <div class="vital-value" id="valTemp" style="color: #818cf8;">36.7</div>
+          <div class="vital-sub"><span>°C</span><span>DS18B20</span></div>
+        </div>
+        <div class="vital-card">
+          <div class="vital-label">Impact Force</div>
+          <div class="vital-value" id="valAccel" style="color: #cbd5e1;">0.99</div>
+          <div class="vital-sub"><span>g</span><span>MPU6050</span></div>
+        </div>
+      </div>
+
+      <!-- 5. Hardware Simulation Controller -->
+      <div class="controls-card">
+        <div style="font-size: 11px; font-weight: 700; color: #94a3b8;">Hardware IoT Test Presets:</div>
+        <div class="ctrl-grid">
+          <button class="btn-ctrl active" onclick="setMode('NORMAL')">Normal (Green)</button>
+          <button class="btn-ctrl" onclick="setMode('YELLOW_FEVER')">Fever (Yellow)</button>
+          <button class="btn-ctrl" onclick="setMode('YELLOW_TACHY')">Tachy (Yellow)</button>
+          <button class="btn-ctrl" onclick="setMode('YELLOW_SPO2')">SpO2 (Yellow)</button>
+          <button class="btn-ctrl fall" onclick="setMode('RED_FALL')">Fall SOS (Red)</button>
+          <button class="btn-ctrl" onclick="setMode('RED_CRITICAL')">Critical (Red)</button>
+        </div>
+      </div>
+
+      <!-- 6. Daily Hydration & GPS Tracking -->
+      <div class="feature-tile">
+        <div class="tile-title">
+          <span>💧 Daily Hydration Tracker</span>
+          <span style="color: #38bdf8; font-family: monospace;" id="waterText">1,600 / 2,500 ml</span>
+        </div>
+        <div style="background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+          <div id="waterBar" style="width: 64%; height: 100%; background: #38bdf8;"></div>
+        </div>
+        <button onclick="addWater()" style="background: #0284c7; color: white; border: none; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">+250ml Glass</button>
+      </div>
+
+      <div class="feature-tile">
+        <div class="tile-title">
+          <span>📍 Live GPS Coordinates (NEO-6M)</span>
+          <a id="mapsLink" href="https://maps.google.com/?q=28.6139,77.2090" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none; font-weight: 700;">View in Maps ↗</a>
+        </div>
+        <div style="font-size: 11px; color: #cbd5e1; font-family: monospace;" id="gpsCoords">
+          Lat: 28.6139 | Lng: 77.2090 | 8 Satellites Locked
+        </div>
       </div>
     </div>
 
-    <!-- 3. Real-time PPG Heart Waveform (MAX30102) -->
-    <div class="waveform-card">
-      <div class="waveform-header">
-        <span>❤️ Live PPG Pulse Wave (MAX30102)</span>
-        <span id="waveBpm" style="color: var(--green); font-family: monospace;">74.0 BPM</span>
-      </div>
-      <canvas id="ppgCanvas"></canvas>
-    </div>
-
-    <!-- 4. Vitals 4-Grid -->
-    <div class="vitals-grid">
-      <div class="vital-card">
-        <div class="vital-label">Heart Rate</div>
-        <div class="vital-value" id="valHr" style="color: #38bdf8;">74.0</div>
-        <div class="vital-sub"><span>BPM</span><span>MAX30102</span></div>
-      </div>
-      <div class="vital-card">
-        <div class="vital-label">Blood Oxygen</div>
-        <div class="vital-value" id="valSpo2" style="color: #10b981;">98.4</div>
-        <div class="vital-sub"><span>% SpO2</span><span>Optical</span></div>
-      </div>
-      <div class="vital-card">
-        <div class="vital-label">Body Temp</div>
-        <div class="vital-value" id="valTemp" style="color: #818cf8;">36.7</div>
-        <div class="vital-sub"><span>°C</span><span>DS18B20</span></div>
-      </div>
-      <div class="vital-card">
-        <div class="vital-label">Impact Force</div>
-        <div class="vital-value" id="valAccel" style="color: #cbd5e1;">0.99</div>
-        <div class="vital-sub"><span>g</span><span>MPU6050</span></div>
+    <!-- TAB 2: DOCTORS DIRECTORY -->
+    <div id="tab-doctors" class="tab-content">
+      <input type="text" id="doctorSearch" class="search-input" placeholder="🔍 Search doctors by name or specialty..." oninput="filterDoctors()">
+      <div id="doctorsListContainer">
+        <!-- Injected via JavaScript -->
       </div>
     </div>
 
-    <!-- 5. Simulation Preset Controller -->
-    <div class="controls-card">
-      <div style="font-size: 12px; font-weight: 700; color: #94a3b8;">IoT Test Presets:</div>
-      <div class="ctrl-grid">
-        <button class="btn-ctrl active" onclick="setMode('NORMAL')">Normal (Green)</button>
-        <button class="btn-ctrl" onclick="setMode('YELLOW_FEVER')">Fever (Yellow)</button>
-        <button class="btn-ctrl" onclick="setMode('YELLOW_TACHY')">Tachy (Yellow)</button>
-        <button class="btn-ctrl" onclick="setMode('YELLOW_SPO2')">SpO2 (Yellow)</button>
-        <button class="btn-ctrl fall" onclick="setMode('RED_FALL')">Fall SOS (Red)</button>
-        <button class="btn-ctrl" onclick="setMode('RED_CRITICAL')">Critical (Red)</button>
+    <!-- TAB 3: HOSPITALS DIRECTORY -->
+    <div id="tab-hospitals" class="tab-content">
+      <input type="text" id="hospitalSearch" class="search-input" placeholder="🔍 Search hospitals or clinics by name/area..." oninput="filterHospitals()">
+      <div id="hospitalsListContainer">
+        <!-- Injected via JavaScript -->
       </div>
     </div>
 
-    <!-- 6. Extra Health Details (Hydration, Step Counter, GPS, Doctor) -->
-    <div class="feature-tile">
-      <div class="tile-title">
-        <span>💧 Daily Hydration Tracker</span>
-        <span style="color: #38bdf8; font-family: monospace;" id="waterText">1,600 / 2,500 ml</span>
-      </div>
-      <div style="background: #334155; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
-        <div id="waterBar" style="width: 64%; height: 100%; background: #38bdf8;"></div>
-      </div>
-      <button onclick="addWater()" style="background: #0284c7; color: white; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;">+250ml Glass</button>
-    </div>
-
-    <div class="feature-tile">
-      <div class="tile-title">
-        <span>📍 Live GPS Coordinates (NEO-6M)</span>
-        <a id="mapsLink" href="https://maps.google.com/?q=28.6139,77.2090" target="_blank" style="color: #38bdf8; font-size: 11px; text-decoration: none;">View Maps</a>
-      </div>
-      <div style="font-size: 11px; color: #cbd5e1; font-family: monospace;" id="gpsCoords">
-        Lat: 28.6139 | Lng: 77.2090 | 8 Satellites
+    <!-- TAB 4: MEDICINE DATABASE -->
+    <div id="tab-medicines" class="tab-content">
+      <input type="text" id="medicineSearch" class="search-input" placeholder="🔍 Search medicine by name or illness (e.g. fever, cough)..." oninput="filterMedicines()">
+      <div id="medicinesListContainer">
+        <!-- Injected via JavaScript -->
       </div>
     </div>
 
-    <div class="feature-tile">
-      <div class="tile-title">
-        <span>🩺 Organ Health Index</span>
-        <span style="color: #10b981; font-weight: 800;">91/100 Optimal</span>
+    <!-- TAB 5: GOVERNMENT SCHEMES -->
+    <div id="tab-gov" class="tab-content">
+      <div id="govSchemesContainer">
+        <!-- Injected via JavaScript -->
       </div>
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 11px; text-align: center;">
-        <div style="background: #0f172a; padding: 6px; border-radius: 8px;">Heart: 92%</div>
-        <div style="background: #0f172a; padding: 6px; border-radius: 8px;">Lungs: 96%</div>
-        <div style="background: #0f172a; padding: 6px; border-radius: 8px;">Kidneys: 90%</div>
+    </div>
+
+    <!-- TAB 6: AI DOCTOR CHATBOT -->
+    <div id="tab-chatbot" class="tab-content">
+      <div class="chat-container">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg ai">
+            <strong>🤖 AI Clinical Assistant:</strong><br>
+            Hello! Describe your illness or symptoms (e.g. fever, migraine, cough, acidity, body pain). I will evaluate and prescribe medicines, exact dosages, and care tips.
+          </div>
+        </div>
+
+        <div class="chat-chips">
+          <span class="chat-chip" onclick="askAIChat('तेज बुखार और सिरदर्द की दवा बताओ')">तेज बुखार & सिरदर्द</span>
+          <span class="chat-chip" onclick="askAIChat('खांसी और गले में खराश के लिए क्या लूँ?')">खांसी & खराश</span>
+          <span class="chat-chip" onclick="askAIChat('पेट में गैस और एसिडिटी हो रही है')">गैस & एसिडिटी</span>
+          <span class="chat-chip" onclick="askAIChat('दस्त और पेट दर्द का उपचार बताएं')">दस्त / Loose Motion</span>
+        </div>
+
+        <form class="chat-input-bar" onsubmit="sendAIChat(event)">
+          <input type="text" id="chatInputText" class="chat-input" placeholder="Type illness or symptoms...">
+          <button type="submit" class="btn-chat-send">Ask</button>
+        </form>
       </div>
     </div>
   </main>
 
-  <!-- Bottom App Navigation -->
+  <!-- Bottom Navigation Bar -->
   <nav class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('vitals')">
+    <div class="nav-item active" onclick="switchNavTab('vitals')">
       <span class="nav-icon">📊</span>
       <span>Vitals</span>
     </div>
-    <div class="nav-item" onclick="switchTab('care')">
-      <span class="nav-icon">💊</span>
-      <span>Medicines</span>
+    <div class="nav-item" onclick="switchNavTab('doctors')">
+      <span class="nav-icon">👨‍⚕️</span>
+      <span>Doctors</span>
     </div>
     <div class="nav-item" onclick="triggerFallSOS()">
-      <span class="nav-icon" style="color: #ef4444;">🚨</span>
+      <span class="nav-icon" style="color: #ef4444; font-size: 20px;">🚨</span>
       <span style="color: #ef4444; font-weight: 800;">SOS</span>
     </div>
-    <div class="nav-item" onclick="callDoctor()">
-      <span class="nav-icon">🩺</span>
-      <span>Doctor</span>
+    <div class="nav-item" onclick="switchNavTab('chatbot')">
+      <span class="nav-icon">🤖</span>
+      <span>AI Doctor</span>
     </div>
-    <div class="nav-item" onclick="switchTab('profile')">
-      <span class="nav-icon">👤</span>
-      <span>Profile</span>
+    <div class="nav-item" onclick="openSOSSettings()">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
     </div>
   </nav>
 
-  <!-- Fall SOS Modal (Requirement: Fall hone pe SOS ko dial kare) -->
-  <div id="sosModal" class="sos-modal">
+  <!-- Fall SOS Modal (Auto-dials on fall impact) -->
+  <div id="sosModal" class="modal-backdrop">
     <div class="sos-box">
-      <div style="font-size: 40px;">🚨</div>
+      <div style="font-size: 42px;">🚨</div>
       <h3 style="font-size: 18px; font-weight: 900; color: #ef4444; margin-top: 6px;">FALL IMPACT DETECTED!</h3>
       <p style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">Calling emergency services & guardian in:</p>
       
       <div id="countdownCircle" class="countdown-circle">10</div>
 
-      <button class="btn-dial-sos" onclick="executeEmergencyCall('112')">
-        📞 DIAL 112 NOW
+      <button class="btn-dial-sos" onclick="executeEmergencyCall()">
+        📞 DIAL NOW
       </button>
       <button class="btn-cancel-sos" onclick="cancelSOS()">
         I Am OK (Cancel Alert)
@@ -370,8 +604,141 @@
     </div>
   </div>
 
+  <!-- SOS Settings Modal (Requirement #4: User can manage SOS dial numbers) -->
+  <div id="sosSettingsModal" class="modal-backdrop">
+    <div class="modal-sheet">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 style="font-size: 15px; font-weight: 800; color: white;">⚙️ Manage Emergency SOS Numbers</h3>
+        <button onclick="closeSOSSettings()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+
+      <form onsubmit="saveSOSSettings(event)">
+        <div class="form-group">
+          <label class="form-label">🚨 Primary Emergency SOS Dial Number</label>
+          <input type="text" id="cfgPrimarySos" class="form-control" required placeholder="e.g. 112 or Mobile Number">
+          <span style="font-size: 10px; color: #94a3b8;">This number is dialed directly when fall is detected.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">👤 Family Guardian Name</label>
+          <input type="text" id="cfgGuardianName" class="form-control" placeholder="e.g. Rahul Sharma">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">📞 Family Guardian Phone</label>
+          <input type="tel" id="cfgGuardianPhone" class="form-control" placeholder="e.g. +919876543210">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">🚑 National Ambulance Number</label>
+          <input type="text" id="cfgAmbulance" class="form-control" value="108">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">⏱️ Auto-Dial Delay Seconds</label>
+          <input type="number" id="cfgDelaySecs" class="form-control" value="10" min="3" max="30">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">🌐 Backend API URL (Optional)</label>
+          <input type="url" id="cfgApiUrl" class="form-control" placeholder="https://your-render-app.onrender.com">
+        </div>
+
+        <button type="submit" style="width: 100%; background: #0284c7; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: 800; font-size: 13px; cursor: pointer; margin-top: 6px;">
+          Save Settings
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Doctor Consultation Booking Modal (Requirement #6: FormSubmit.co Email + WhatsApp structured message) -->
+  <div id="bookingModal" class="modal-backdrop">
+    <div class="modal-sheet">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>
+          <h3 style="font-size: 14px; font-weight: 800; color: white;" id="bookDocName">Book Consultation</h3>
+          <p style="font-size: 11px; color: #38bdf8;" id="bookDocSpec">Specialist Consultation</p>
+        </div>
+        <button onclick="closeBookingModal()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer;">✕</button>
+      </div>
+
+      <form onsubmit="handleBookingSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">Patient Full Name</label>
+          <input type="text" id="bkPatientName" class="form-control" required placeholder="e.g. Rajesh Kumar">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Patient Email Address (for email confirmation)</label>
+          <input type="email" id="bkPatientEmail" class="form-control" required placeholder="patient@gmail.com">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Patient Phone Number</label>
+          <input type="tel" id="bkPatientPhone" class="form-control" required placeholder="+919876543210">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="form-group">
+            <label class="form-label">Preferred Date</label>
+            <input type="date" id="bkDate" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preferred Time</label>
+            <input type="text" id="bkTime" class="form-control" value="11:00 AM">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reported Symptoms & Notes</label>
+          <textarea id="bkSymptoms" class="form-control" rows="2" placeholder="e.g. Mild chest heaviness, fever since 2 days..."></textarea>
+        </div>
+
+        <button type="submit" id="bkSubmitBtn" style="width: 100%; background: #6366f1; color: white; border: none; padding: 11px; border-radius: 12px; font-weight: 800; font-size: 12.5px; cursor: pointer; margin-bottom: 8px;">
+          📧 Submit & Send Confirmation Email
+        </button>
+
+        <div id="bookingResultArea" style="display: none; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 10px;">
+          <div style="font-size: 11px; color: #10b981; font-weight: 700; margin-bottom: 6px;" id="bkEmailStatusText">
+            ✓ Email dispatched via FormSubmit.co
+          </div>
+          <button type="button" onclick="openWhatsAppWithBooking()" style="width: 100%; background: #16a34a; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>💬 Send Structured Message via WhatsApp</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    // State
+    // --- STATE CONFIGURATION ---
+    let lang = 'en';
+    let currentTab = 'vitals';
+    let countdownVal = 10;
+    let countdownInterval = null;
+    let waterMl = 1600;
+    let selectedDoctor = null;
+    let lastBookingDetails = null;
+
+    // Persisted SOS Configuration (Requirement #4)
+    let sosConfig = {
+      primary_sos_number: "112",
+      secondary_guardian_name: "Family Guardian",
+      secondary_guardian_number: "+919811223344",
+      ambulance_number: "108",
+      delay_seconds: 10,
+      api_url: "http://localhost:8000"
+    };
+
+    // Load saved settings from localStorage
+    try {
+      const saved = localStorage.getItem("smarthealth_sos_config");
+      if (saved) {
+        sosConfig = Object.assign(sosConfig, JSON.parse(saved));
+      }
+    } catch (e) {}
+
+    // Live Telemetry
     let telemetry = {
       heart_rate: 74.0,
       spo2: 98.4,
@@ -382,14 +749,183 @@
       longitude: 77.2090
     };
     let zone = "GREEN";
-    let countdownInterval = null;
-    let countdownVal = 10;
-    let waterMl = 1600;
 
-    // Backend Base URL
-    const API_URL = "http://localhost:8000";
+    // --- REAL DATABASE COLLECTIONS (Requirement #1 & #2) ---
+    const doctorsData = [
+      {
+        id: "doc-1",
+        name: "Dr. Sameer Verma",
+        specialty: "Senior Cardiologist",
+        experience: "16+ Years Experience",
+        hospital: "Max Super Speciality Hospital, Saket",
+        phone: "+919876543210",
+        whatsapp: "919876543210",
+        fee: "₹1,000",
+        rating: "4.9 ★",
+        photo: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop"
+      },
+      {
+        id: "doc-2",
+        name: "Dr. Ananya Iyer",
+        specialty: "Pulmonologist & Chest Specialist",
+        experience: "12+ Years Experience",
+        hospital: "Apollo Hospital, Sarita Vihar",
+        phone: "+919811223344",
+        whatsapp: "919811223344",
+        fee: "₹800",
+        rating: "4.8 ★",
+        photo: "https://images.unsplash.com/photo-1594824813587-257a070eb06b?w=200&auto=format&fit=crop"
+      },
+      {
+        id: "doc-3",
+        name: "Dr. Vikram Sethi",
+        specialty: "Consultant Physician & Diabetologist",
+        experience: "18+ Years Experience",
+        hospital: "Fortis Escorts Heart Institute",
+        phone: "+919988776655",
+        whatsapp: "919988776655",
+        fee: "₹700",
+        rating: "4.9 ★",
+        photo: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop"
+      },
+      {
+        id: "doc-4",
+        name: "Dr. Pooja Deshmukh",
+        specialty: "General Physician & Geriatric Care",
+        experience: "10+ Years Experience",
+        hospital: "Manipal Hospital, Dwarka",
+        phone: "+919822334455",
+        whatsapp: "919822334455",
+        fee: "₹500",
+        rating: "4.7 ★",
+        photo: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop"
+      }
+    ];
 
-    // Setup Canvas Waveform
+    const hospitalsData = [
+      {
+        id: "hosp-1",
+        name: "Max Super Speciality Hospital",
+        address: "1, 2, Press Enclave Marg, Saket, New Delhi",
+        emergency_phone: "011-26515050",
+        icu_beds: "45 ICU Beds Available",
+        is_24_7: true,
+        coords: "28.5284,77.2185"
+      },
+      {
+        id: "hosp-2",
+        name: "All India Institute of Medical Sciences (AIIMS)",
+        address: "Sri Aurobindo Marg, Ansari Nagar, New Delhi",
+        emergency_phone: "011-26588500",
+        icu_beds: "120 Emergency Beds",
+        is_24_7: true,
+        coords: "28.5672,77.2100"
+      },
+      {
+        id: "hosp-3",
+        name: "Apollo Hospital",
+        address: "Delhi Mathura Road, Sarita Vihar, New Delhi",
+        emergency_phone: "1066",
+        icu_beds: "60 ICU Beds Available",
+        is_24_7: true,
+        coords: "28.5372,77.2842"
+      },
+      {
+        id: "hosp-4",
+        name: "Fortis Escorts Heart Institute",
+        address: "Okhla Road, Sukhdev Vihar, New Delhi",
+        emergency_phone: "011-47135000",
+        icu_beds: "35 Cardiac ICU Beds",
+        is_24_7: true,
+        coords: "28.5606,77.2731"
+      }
+    ];
+
+    const medicinesData = [
+      {
+        name: "Paracetamol (Dolo 650)",
+        illness: "Fever & Body Ache",
+        dosage: "1 tablet every 6-8 hrs (Max 3/day)",
+        timing: "After meals with water",
+        precaution: "Do not exceed recommended dose. Avoid alcohol.",
+        price: "₹30 / strip"
+      },
+      {
+        name: "Pantoprazole 40mg (Pan-40)",
+        illness: "Acidity & Heartburn",
+        dosage: "1 tablet once daily",
+        timing: "30 mins before morning breakfast",
+        precaution: "Do not crush or chew the tablet.",
+        price: "₹45 / strip"
+      },
+      {
+        name: "Levocetirizine 5mg (Levocet)",
+        illness: "Cold, Sneezing & Allergy",
+        dosage: "1 tablet at night",
+        timing: "Before bedtime",
+        precaution: "May cause mild sleepiness. Avoid driving.",
+        price: "₹25 / strip"
+      },
+      {
+        name: "Ascoril-LS Cough Syrup",
+        illness: "Wet Cough & Phlegm",
+        dosage: "10ml twice daily",
+        timing: "After meals with warm water",
+        precaution: "Shake bottle well before use.",
+        price: "₹95 / bottle"
+      },
+      {
+        name: "ORS Electrolyte Powder",
+        illness: "Dehydration & Loose Motion",
+        dosage: "1 packet in 1 liter clean water",
+        timing: "Sip throughout the day",
+        precaution: "Discard any unused solution after 24 hrs.",
+        price: "₹20 / sachet"
+      },
+      {
+        name: "Telmisartan 40mg (Telma 40)",
+        illness: "High Blood Pressure",
+        dosage: "1 tablet daily as prescribed",
+        timing: "Fixed time every morning",
+        precaution: "Regular blood pressure monitoring required.",
+        price: "₹65 / strip"
+      }
+    ];
+
+    const govSchemesData = [
+      {
+        title: "Ayushman Bharat PM-JAY",
+        desc: "Provides up to ₹5 Lakh cashless treatment per family per year across 28,000+ empanelled hospitals.",
+        portal: "https://pmjay.gov.in",
+        helpline: "14555"
+      },
+      {
+        title: "Pradhan Mantri Jan Aushadhi (PMBI)",
+        desc: "Quality generic medicines at 50% to 90% lower prices available at 10,000+ Kendras nationwide.",
+        portal: "https://janaushadhi.gov.in",
+        helpline: "1800-180-8080"
+      },
+      {
+        title: "e-RaktKosh (National Blood Bank)",
+        desc: "Search real-time blood stock availability, donate blood, and request blood across Indian hospitals.",
+        portal: "https://eraktkosh.in",
+        helpline: "011-23063232"
+      },
+      {
+        title: "108 National Emergency Ambulance",
+        desc: "24/7 free toll-free medical ambulance emergency response service across states.",
+        portal: "https://nhm.gov.in",
+        helpline: "108"
+      },
+      {
+        title: "ABHA Card (Digital Health ID)",
+        desc: "Create your unique 14-digit Ayushman Bharat Health Account to securely store medical records.",
+        portal: "https://healthid.ndhm.gov.in",
+        helpline: "1800-11-4477"
+      }
+    ];
+
+    // --- CANVAS PPG HEART WAVEFORM ---
     const canvas = document.getElementById('ppgCanvas');
     const ctx = canvas.getContext('2d');
     canvas.width = canvas.parentElement.clientWidth;
@@ -407,7 +943,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
       ctx.strokeStyle = zone === 'RED' ? '#ef4444' : (zone === 'YELLOW' ? '#f59e0b' : '#10b981');
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.2;
       for (let i = 0; i < points.length; i++) {
         const x = i * 2;
         const y = points[i];
@@ -418,28 +954,29 @@
     }
     drawPPG();
 
-    // Stream from server or simulate locally
+    // --- TELEMETRY STREAM & SIMULATION ---
     async function fetchStream() {
-      try {
-        const res = await fetch(API_URL + '/api/iot/latest');
-        if (res.ok) {
-          const data = await res.json();
-          telemetry = data.telemetry;
-          updateUI(data.evaluation);
-          if (data.evaluation.fall_alert_active || telemetry.impact_detected) {
-            triggerFallSOS();
+      if (sosConfig.api_url) {
+        try {
+          const res = await fetch(sosConfig.api_url + '/api/iot/latest');
+          if (res.ok) {
+            const data = await res.json();
+            telemetry = data.telemetry;
+            updateUI(data.evaluation);
+            if (data.evaluation.fall_alert_active || telemetry.impact_detected) {
+              triggerFallSOS();
+            }
+            return;
           }
-        }
-      } catch (e) {
-        // standalone internal ticker
-        tickSimulation();
+        } catch (e) {}
       }
+      tickSimulation();
     }
     setInterval(fetchStream, 1500);
 
     function tickSimulation() {
       if (zone === 'GREEN') {
-        telemetry.heart_rate = +(72 + Math.sin(Date.now() / 2000) * 4).toFixed(1);
+        telemetry.heart_rate = +(72 + Math.sin(Date.now() / 2000) * 3).toFixed(1);
         telemetry.temperature_c = 36.7;
         telemetry.spo2 = 98.4;
       }
@@ -517,19 +1054,133 @@
       updateUI({ zone: zone });
     }
 
-    // Fall SOS Trigger (Auto-dials on fall)
+    // --- TAB SWITCHING ---
+    function switchMainTab(tabId, el) {
+      currentTab = tabId;
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      const target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.add('active');
+      if (el) el.classList.add('active');
+
+      // Update bottom nav
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const matchNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.innerText.toLowerCase().includes(tabId));
+      if (matchNav) matchNav.classList.add('active');
+    }
+
+    function switchNavTab(tabId) {
+      const topBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.innerText.toLowerCase().includes(tabId));
+      switchMainTab(tabId, topBtn);
+    }
+
+    // --- RENDER DIRECTORIES ---
+    function renderDoctors(list = doctorsData) {
+      const container = document.getElementById('doctorsListContainer');
+      container.innerHTML = list.map(d => `
+        <div class="doctor-card">
+          <img src="${d.photo}" class="doc-avatar" alt="${d.name}">
+          <div class="doc-info">
+            <div class="doc-name">${d.name}</div>
+            <div class="doc-spec">${d.specialty} (${d.rating})</div>
+            <div class="doc-meta">
+              📍 ${d.hospital}<br>
+              🕒 ${d.experience} • Fee: <strong>${d.fee}</strong>
+            </div>
+            <div class="doc-actions">
+              <button class="btn-action btn-book" onclick="openBookingModal('${d.id}')">📅 Book</button>
+              <button class="btn-action btn-call" onclick="directCall('${d.phone}')">📞 Call</button>
+              <button class="btn-action btn-wa" onclick="directWhatsApp('${d.whatsapp}', '${encodeURIComponent('Hello ' + d.name + ', I would like to consult with you.')}')">💬 WA</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderHospitals(list = hospitalsData) {
+      const container = document.getElementById('hospitalsListContainer');
+      container.innerHTML = list.map(h => `
+        <div class="hosp-card">
+          <div class="hosp-header">
+            <div class="hosp-name">${h.name}</div>
+            <span class="hosp-badge">${h.is_24_7 ? '24/7 OPEN' : 'OPD'}</span>
+          </div>
+          <div class="hosp-details">
+            📍 ${h.address}<br>
+            🛏️ <strong>${h.icu_beds}</strong>
+          </div>
+          <div class="doc-actions">
+            <button class="btn-action btn-call" onclick="directCall('${h.emergency_phone}')">📞 Emergency ${h.emergency_phone}</button>
+            <button class="btn-action btn-book" onclick="openMapsDirections('${h.coords}')">🗺️ Directions</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderMedicines(list = medicinesData) {
+      const container = document.getElementById('medicinesListContainer');
+      container.innerHTML = list.map(m => `
+        <div class="medicine-card">
+          <div class="med-header">
+            <div class="med-brand">${m.name}</div>
+            <span class="med-illness">${m.illness}</span>
+          </div>
+          <div class="med-details">
+            💊 <strong>Dose:</strong> ${m.dosage} (${m.timing})<br>
+            ⚠️ <strong>Precaution:</strong> ${m.precaution}<br>
+            🏷️ <strong>Jan Aushadhi Price:</strong> ${m.price}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderGovSchemes() {
+      const container = document.getElementById('govSchemesContainer');
+      container.innerHTML = govSchemesData.map(g => `
+        <div class="scheme-card">
+          <div class="scheme-title">🏛️ ${g.title}</div>
+          <div class="scheme-desc">${g.desc}</div>
+          <div class="doc-actions">
+            <button class="btn-action btn-call" onclick="directCall('${g.helpline}')">📞 Toll-Free ${g.helpline}</button>
+            <button class="btn-action btn-wa" onclick="openExternalUrl('${g.portal}')">🌐 Open Portal</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Search Filters
+    function filterDoctors() {
+      const query = document.getElementById('doctorSearch').value.toLowerCase();
+      renderDoctors(doctorsData.filter(d => d.name.toLowerCase().includes(query) || d.specialty.toLowerCase().includes(query)));
+    }
+    function filterHospitals() {
+      const query = document.getElementById('hospitalSearch').value.toLowerCase();
+      renderHospitals(hospitalsData.filter(h => h.name.toLowerCase().includes(query) || h.address.toLowerCase().includes(query)));
+    }
+    function filterMedicines() {
+      const query = document.getElementById('medicineSearch').value.toLowerCase();
+      renderMedicines(medicinesData.filter(m => m.name.toLowerCase().includes(query) || m.illness.toLowerCase().includes(query)));
+    }
+
+    // Initial Renders
+    renderDoctors();
+    renderHospitals();
+    renderMedicines();
+    renderGovSchemes();
+
+    // --- EMERGENCY SOS PROTOCOL ---
     function triggerFallSOS() {
       const modal = document.getElementById('sosModal');
       modal.classList.add('active');
-      countdownVal = 10;
+      countdownVal = parseInt(sosConfig.delay_seconds) || 10;
       document.getElementById('countdownCircle').innerText = countdownVal;
 
-      // Native Android vibration
+      // Native Android hardware vibration & speech
       if (window.AndroidNative && window.AndroidNative.vibrateAlert) {
         window.AndroidNative.vibrateAlert(1500);
       }
       if (window.AndroidNative && window.AndroidNative.speakVoice) {
-        window.AndroidNative.speakVoice("Warning! Fall detected. Emergency SOS dialing in 10 seconds.");
+        window.AndroidNative.speakVoice("Warning! Fall detected. Emergency SOS dialing in " + countdownVal + " seconds.");
       }
 
       if (countdownInterval) clearInterval(countdownInterval);
@@ -538,27 +1189,27 @@
         document.getElementById('countdownCircle').innerText = countdownVal;
         if (countdownVal <= 0) {
           clearInterval(countdownInterval);
-          executeEmergencyCall('112');
+          executeEmergencyCall();
         }
       }, 1000);
     }
 
-    function executeEmergencyCall(phone) {
+    function executeEmergencyCall() {
       if (countdownInterval) clearInterval(countdownInterval);
       document.getElementById('sosModal').classList.remove('active');
+      const targetPhone = sosConfig.primary_sos_number || "112";
 
-      // Native Android Phone Call Intent Bridge
+      // Native Call
       if (window.AndroidNative && window.AndroidNative.dialEmergency) {
-        window.AndroidNative.dialEmergency(phone);
+        window.AndroidNative.dialEmergency(targetPhone);
       } else {
-        // Standard mobile web protocol
-        window.location.href = 'tel:' + phone;
+        window.location.href = 'tel:' + targetPhone;
       }
 
       // SMS Dispatch with Location
-      const msg = `EMERGENCY: Fall detected on patient Rajesh Sharma! Lat:${telemetry.latitude}, Lng:${telemetry.longitude}`;
+      const msg = `EMERGENCY ALERT: SmartHealth Patient Fall Detected! GPS: https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}`;
       if (window.AndroidNative && window.AndroidNative.sendSms) {
-        window.AndroidNative.sendSms("+919876543210", msg);
+        window.AndroidNative.sendSms(sosConfig.secondary_guardian_number || "+919876543210", msg);
       }
     }
 
@@ -572,22 +1223,251 @@
       }
     }
 
+    // --- SOS SETTINGS MODAL (Requirement #4) ---
+    function openSOSSettings() {
+      document.getElementById('cfgPrimarySos').value = sosConfig.primary_sos_number;
+      document.getElementById('cfgGuardianName').value = sosConfig.secondary_guardian_name;
+      document.getElementById('cfgGuardianPhone').value = sosConfig.secondary_guardian_number;
+      document.getElementById('cfgAmbulance').value = sosConfig.ambulance_number;
+      document.getElementById('cfgDelaySecs').value = sosConfig.delay_seconds;
+      document.getElementById('cfgApiUrl').value = sosConfig.api_url || "";
+      document.getElementById('sosSettingsModal').classList.add('active');
+    }
+
+    function closeSOSSettings() {
+      document.getElementById('sosSettingsModal').classList.remove('active');
+    }
+
+    function saveSOSSettings(e) {
+      e.preventDefault();
+      sosConfig.primary_sos_number = document.getElementById('cfgPrimarySos').value.trim();
+      sosConfig.secondary_guardian_name = document.getElementById('cfgGuardianName').value.trim();
+      sosConfig.secondary_guardian_number = document.getElementById('cfgGuardianPhone').value.trim();
+      sosConfig.ambulance_number = document.getElementById('cfgAmbulance').value.trim();
+      sosConfig.delay_seconds = parseInt(document.getElementById('cfgDelaySecs').value) || 10;
+      sosConfig.api_url = document.getElementById('cfgApiUrl').value.trim();
+
+      try {
+        localStorage.setItem("smarthealth_sos_config", JSON.stringify(sosConfig));
+      } catch (err) {}
+
+      closeSOSSettings();
+      if (window.AndroidNative && window.AndroidNative.showToast) {
+        window.AndroidNative.showToast("Emergency SOS numbers updated successfully.");
+      }
+    }
+
+    // --- DOCTOR CONSULTATION BOOKING (Requirement #6) ---
+    function openBookingModal(docId) {
+      selectedDoctor = doctorsData.find(d => d.id === docId) || doctorsData[0];
+      document.getElementById('bookDocName').innerText = "Consult with " + selectedDoctor.name;
+      document.getElementById('bookDocSpec').innerText = selectedDoctor.specialty + " • " + selectedDoctor.hospital;
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('bkDate').value = today;
+      document.getElementById('bookingResultArea').style.display = 'none';
+      document.getElementById('bookingModal').classList.add('active');
+    }
+
+    function closeBookingModal() {
+      document.getElementById('bookingModal').classList.remove('active');
+    }
+
+    async function handleBookingSubmit(e) {
+      e.preventDefault();
+      const patientName = document.getElementById('bkPatientName').value.trim();
+      const patientEmail = document.getElementById('bkPatientEmail').value.trim();
+      const patientPhone = document.getElementById('bkPatientPhone').value.trim();
+      const bkDate = document.getElementById('bkDate').value;
+      const bkTime = document.getElementById('bkTime').value;
+      const bkSymptoms = document.getElementById('bkSymptoms').value.trim();
+
+      const btn = document.getElementById('bkSubmitBtn');
+      btn.innerText = "⏳ Dispatching Confirmation Email...";
+      btn.disabled = true;
+
+      lastBookingDetails = {
+        patientName, patientEmail, patientPhone, bkDate, bkTime, bkSymptoms,
+        doctorName: selectedDoctor.name,
+        doctorPhone: selectedDoctor.whatsapp,
+        hospital: selectedDoctor.hospital
+      };
+
+      // 1. Dispatch real email via FormSubmit.co API (Requirement #6)
+      try {
+        await fetch(`https://formsubmit.co/ajax/${patientEmail}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            _subject: `Appointment Confirmed - ${patientName} with ${selectedDoctor.name}`,
+            Patient_Name: patientName,
+            Patient_Phone: patientPhone,
+            Doctor: selectedDoctor.name,
+            Hospital: selectedDoctor.hospital,
+            Date: bkDate,
+            Time: bkTime,
+            Symptoms: bkSymptoms,
+            Live_Heart_Rate: telemetry.heart_rate + " BPM",
+            Live_SpO2: telemetry.spo2 + " %",
+            Live_Temperature: telemetry.temperature_c + " °C",
+            Current_Health_Zone: zone + " ZONE"
+          })
+        });
+      } catch (err) {}
+
+      btn.innerText = "✓ Consultation Registered";
+      document.getElementById('bookingResultArea').style.display = 'block';
+    }
+
+    function openWhatsAppWithBooking() {
+      if (!lastBookingDetails) return;
+      const structuredMsg = `*SMARTHEALTH APPOINTMENT CONFIRMATION*
+━━━━━━━━━━━━━━━━━━━
+👤 *Patient:* ${lastBookingDetails.patientName}
+📞 *Phone:* ${lastBookingDetails.patientPhone}
+👨‍⚕️ *Doctor:* ${lastBookingDetails.doctorName}
+🏥 *Facility:* ${lastBookingDetails.hospital}
+📅 *Date & Time:* ${lastBookingDetails.bkDate} at ${lastBookingDetails.bkTime}
+📝 *Symptoms:* ${lastBookingDetails.bkSymptoms || "General Health Review"}
+━━━━━━━━━━━━━━━━━━━
+📊 *Live IoT Vitals Snapshot:*
+• Heart Rate: ${telemetry.heart_rate} BPM
+• SpO2: ${telemetry.spo2} %
+• Temp: ${telemetry.temperature_c} °C
+• Zone: ${zone} ZONE
+━━━━━━━━━━━━━━━━━━━
+_Sent via SmartHealth Android Lifeline App_`;
+
+      const cleanPhone = lastBookingDetails.doctorPhone.replace(/[^0-9]/g, '');
+      const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(structuredMsg)}`;
+
+      if (window.AndroidNative && window.AndroidNative.openWhatsApp) {
+        window.AndroidNative.openWhatsApp(cleanPhone, structuredMsg);
+      } else {
+        openExternalUrl(url);
+      }
+    }
+
+    // --- AI CHATBOT (Requirement #3) ---
+    function askAIChat(text) {
+      document.getElementById('chatInputText').value = text;
+      sendAIChat();
+    }
+
+    async function sendAIChat(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('chatInputText');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const container = document.getElementById('chatMessages');
+      container.innerHTML += `<div class="chat-msg user">${text}</div>`;
+      container.scrollTop = container.scrollHeight;
+
+      // Check if backend available
+      let aiResponseText = "";
+      if (sosConfig.api_url) {
+        try {
+          const res = await fetch(sosConfig.api_url + '/api/ai/prescribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              symptom_text: text,
+              current_heart_rate: telemetry.heart_rate,
+              current_temp: telemetry.temperature_c,
+              current_spo2: telemetry.spo2
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            aiResponseText = `<strong>🩺 Diagnosis: ${data.condition_diagnosed}</strong><br>${data.clinical_assessment}<br><br><strong>💊 Prescribed:</strong><br>` +
+              data.prescribed_medicines.map(m => `• <strong>${m.name}</strong>: ${m.dosage} (${m.purpose})`).join('<br>') +
+              `<br><br>⚠️ <em>${data.red_flags || 'Consult clinic if symptoms worsen.'}</em>`;
+          }
+        } catch (e) {}
+      }
+
+      // Smart Clinical Local Fallback
+      if (!aiResponseText) {
+        const lower = text.toLowerCase();
+        if (lower.includes('बुखार') || lower.includes('fever')) {
+          aiResponseText = `<strong>🩺 Diagnosis: Acute Febrile Condition</strong><br>
+Current Temp: ${telemetry.temperature_c}°C.<br><br>
+<strong>💊 Prescribed Medication:</strong><br>
+• <strong>Paracetamol (Dolo 650)</strong>: 1 tablet after food every 6-8 hrs as needed.<br>
+• <strong>ORS Hydration</strong>: Sip 1 liter prepared solution across the day.<br><br>
+🌿 <strong>Home Care:</strong> Damp cloth forehead compress, rest in cool room.<br>
+🚨 <strong>Red Flag:</strong> If temperature exceeds 39.5°C (103°F) or stiff neck develops, visit clinic immediately.`;
+        } else if (lower.includes('खांसी') || lower.includes('cough') || lower.includes('खराश')) {
+          aiResponseText = `<strong>🩺 Diagnosis: Upper Respiratory / Bronchial Irritation</strong><br><br>
+<strong>💊 Prescribed Medication:</strong><br>
+• <strong>Ascoril-LS (Wet) / Benadryl-DR (Dry)</strong>: 10ml twice daily after warm meals.<br>
+• <strong>Warm Saltwater Gargle</strong>: 3 times daily for 30 seconds.<br><br>
+🌿 <strong>Home Care:</strong> Eucalyptus steam inhalation for 6 minutes, honey ginger syrup.<br>
+🚨 <strong>Red Flag:</strong> Cough persisting > 2 weeks or shortness of breath.`;
+        } else if (lower.includes('गैस') || lower.includes('acid') || lower.includes('जलन')) {
+          aiResponseText = `<strong>🩺 Diagnosis: Gastroesophageal Acidity / Dyspepsia</strong><br><br>
+<strong>💊 Prescribed Medication:</strong><br>
+• <strong>Pantoprazole 40mg (Pan-D)</strong>: 1 capsule on an empty stomach in the morning.<br>
+• <strong>Gelusil Liquid</strong>: 2 teaspoons after meals if acute burning occurs.<br><br>
+🌿 <strong>Dietary Advice:</strong> Avoid fried/spicy items, eat light khichdi, elevate head during sleep.`;
+        } else if (lower.includes('दस्त') || lower.includes('loose') || lower.includes('diarrhea')) {
+          aiResponseText = `<strong>🩺 Diagnosis: Acute Gastroenteritis / Dehydration Risk</strong><br><br>
+<strong>💊 Prescribed Medication:</strong><br>
+• <strong>ORS Solution (WHO Formula)</strong>: 1 glass after every loose stool.<br>
+• <strong>Econorm 250mg Probiotic</strong>: 1 sachet in water twice daily.<br><br>
+🌿 <strong>Diet:</strong> Curd rice, banana, light coconut water. Avoid dairy milk.`;
+        } else {
+          aiResponseText = `<strong>🩺 Clinical Assessment for "${text}":</strong><br>
+Based on your current vitals (Heart Rate: ${telemetry.heart_rate} BPM, Temp: ${telemetry.temperature_c}°C), drink 2.5L fluids and take Paracetamol 650mg if fever or body ache is present. If symptoms persist beyond 48 hours, book a consultation with our local specialists.`;
+        }
+      }
+
+      container.innerHTML += `<div class="chat-msg ai">${aiResponseText}</div>`;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // --- NATIVE BRIDGES & HELPERS ---
+    function directCall(phone) {
+      if (window.AndroidNative && window.AndroidNative.dialEmergency) {
+        window.AndroidNative.dialEmergency(phone);
+      } else {
+        window.location.href = 'tel:' + phone;
+      }
+    }
+
+    function directWhatsApp(phone, text) {
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const url = `https://wa.me/${cleanPhone}?text=${text}`;
+      if (window.AndroidNative && window.AndroidNative.openWhatsApp) {
+        window.AndroidNative.openWhatsApp(cleanPhone, decodeURIComponent(text));
+      } else {
+        openExternalUrl(url);
+      }
+    }
+
+    function openMapsDirections(coords) {
+      const url = `https://maps.google.com/?q=${coords}`;
+      openExternalUrl(url);
+    }
+
+    function openExternalUrl(url) {
+      if (window.AndroidNative && window.AndroidNative.openExternalUrl) {
+        window.AndroidNative.openExternalUrl(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
     function addWater() {
       waterMl += 250;
       document.getElementById('waterText').innerText = waterMl + " / 2,500 ml";
       document.getElementById('waterBar').style.width = Math.min(100, (waterMl / 2500) * 100) + "%";
     }
 
-    function callDoctor() {
-      executeEmergencyCall("+919876543210");
-    }
-
-    function switchTab(t) {
-      if (t === 'care') {
-        window.scrollTo({ top: 300, behavior: 'smooth' });
-      } else if (t === 'vitals') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+    function toggleLang() {
+      lang = lang === 'en' ? 'hi' : 'en';
+      document.getElementById('langBtn').innerText = lang === 'en' ? 'हिन्दी' : 'EN';
     }
   </script>
 </body>

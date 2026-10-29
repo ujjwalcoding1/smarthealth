@@ -1,15 +1,3 @@
-/*
-  SmartHealth ESP32 IoT Patient Monitor - WiFi & Cloud Edition
-  Features:
-  - MAX30102: Heart rate & pulse reading
-  - DS18B20: Body temperature
-  - MPU6050: 3-Axis Accelerometer & Fall / Impact Detection (>= 2.5g)
-  - NEO-6M GPS: Satellite location & Coordinates
-  - Buzzer: Local emergency acoustic indicator
-  - WiFi & HTTP Client: Transmits JSON telemetry to Render Backend / Local Server
-  - Instant Emergency SOS HTTP POST on Fall Detection
-*/
-
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Wire.h>
@@ -28,7 +16,7 @@ const char* WIFI_SSID = "Ujjwal Mehta";
 const char* WIFI_PASSWORD = "Ujjwal@1856";
 
 // Render deployment URL or local IP: e.g. "https://smarthealth-backend.onrender.com" or "http://192.168.1.100:8000"
-const char* SERVER_URL = "http:// 10.25.212.245:8000";
+const char* SERVER_URL = "http://10.25.212.245:8000";
 
 // =====================================================
 // PIN CONFIGURATION

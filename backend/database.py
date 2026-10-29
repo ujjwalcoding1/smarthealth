@@ -10,167 +10,306 @@ load_dotenv()
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 DB_NAME = os.getenv("DB_NAME", "smarthealth")
 
-# In-Memory & Local Storage Store with MongoDB-compatible API
 class FallbackStore:
     def __init__(self):
         self.data: Dict[str, List[Dict[str, Any]]] = {
             "telemetry": [],
             "alerts": [],
-            "contacts": [
+            "sos_config": {
+                "primary_sos_number": "112",
+                "secondary_guardian_number": "+919811223344",
+                "secondary_guardian_name": "Family Guardian",
+                "ambulance_number": "108",
+                "doctor_phone": "+919876543210",
+                "doctor_name": "Dr. Sameer Verma",
+                "auto_dial_delay_seconds": 10,
+                "enable_sms_alert": True,
+                "custom_message": "EMERGENCY: Patient fell or requires urgent medical attention!"
+            },
+            "doctors": [
                 {
-                    "id": "c1",
-                    "name": "Emergency Services",
-                    "relationship": "National Ambulance / SOS",
-                    "phone": "112",
-                    "is_primary": True,
-                    "notify_sms": True,
-                    "notify_call": True
-                },
-                {
-                    "id": "c2",
+                    "id": "doc1",
                     "name": "Dr. Sameer Verma",
-                    "relationship": "Primary Cardiologist",
+                    "specialty": "Cardiology & Interventional Cardiologist",
+                    "qualification": "MBBS, MD (Medicine), DM (Cardiology), FACC",
+                    "experience_years": 16,
+                    "hospital_clinic_name": "Max Super Speciality Hospital",
+                    "location": "Saket, New Delhi",
                     "phone": "+919876543210",
-                    "is_primary": False,
-                    "notify_sms": True,
-                    "notify_call": True
+                    "whatsapp_number": "919876543210",
+                    "email": "dr.verma@maxhealthcare.com",
+                    "consultation_fee": 1000,
+                    "available_days": "Mon, Wed, Fri, Sat",
+                    "available_time": "10:00 AM - 02:00 PM, 05:00 PM - 08:00 PM",
+                    "photo_url": "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80",
+                    "rating": 4.9
                 },
                 {
-                    "id": "c3",
-                    "name": "Ananya Sharma (Daughter)",
-                    "relationship": "Family Guardian",
-                    "phone": "+919811223344",
-                    "is_primary": False,
-                    "notify_sms": True,
-                    "notify_call": True
+                    "id": "doc2",
+                    "name": "Dr. Priya Sengupta",
+                    "specialty": "General Medicine & Diabetology",
+                    "qualification": "MBBS, MD (Internal Medicine), PGD (Diabetology)",
+                    "experience_years": 12,
+                    "hospital_clinic_name": "Apollo Clinic & Healthcare",
+                    "location": "Connaught Place, Central Delhi",
+                    "phone": "+919812345678",
+                    "whatsapp_number": "919812345678",
+                    "email": "dr.priya@apolloclinic.com",
+                    "consultation_fee": 700,
+                    "available_days": "Mon - Sat",
+                    "available_time": "09:30 AM - 01:30 PM, 04:30 PM - 07:30 PM",
+                    "photo_url": "https://images.unsplash.com/photo-1594824813628-9d41c8f42fa0?w=400&auto=format&fit=crop&q=80",
+                    "rating": 4.8
+                },
+                {
+                    "id": "doc3",
+                    "name": "Dr. Rajeshwar Kulkarni",
+                    "specialty": "Pulmonology & Chest Specialist",
+                    "qualification": "MBBS, MD (Pulmonary Medicine), FCCP",
+                    "experience_years": 14,
+                    "hospital_clinic_name": "Fortis Escorts Heart & Lung Institute",
+                    "location": "Okhla Road, New Delhi",
+                    "phone": "+919823456789",
+                    "whatsapp_number": "919823456789",
+                    "email": "dr.kulkarni@fortishealthcare.com",
+                    "consultation_fee": 900,
+                    "available_days": "Tue, Thu, Sat",
+                    "available_time": "11:00 AM - 04:00 PM",
+                    "photo_url": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80",
+                    "rating": 4.9
+                },
+                {
+                    "id": "doc4",
+                    "name": "Dr. Anita Deshmukh",
+                    "specialty": "Neurology & Stroke Management",
+                    "qualification": "MBBS, MD, DM (Neurology)",
+                    "experience_years": 18,
+                    "hospital_clinic_name": "AIIMS Medical Center",
+                    "location": "Ansari Nagar, New Delhi",
+                    "phone": "+919834567890",
+                    "whatsapp_number": "919834567890",
+                    "email": "dr.anita@aiims.edu",
+                    "consultation_fee": 600,
+                    "available_days": "Mon, Wed, Fri",
+                    "available_time": "09:00 AM - 01:00 PM",
+                    "photo_url": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80",
+                    "rating": 4.95
+                }
+            ],
+            "hospitals": [
+                {
+                    "id": "hosp1",
+                    "name": "Max Super Speciality Hospital",
+                    "category": "Multi-Speciality Hospital & Trauma Center",
+                    "address": "1, 2, Press Enclave Road, Saket",
+                    "city": "New Delhi",
+                    "state": "Delhi",
+                    "pincode": "110017",
+                    "emergency_phone": "+91-11-26515050",
+                    "reception_phone": "+91-11-66115050",
+                    "email": "emergency@maxhealthcare.com",
+                    "emergency_24x7": True,
+                    "ambulance_available": True,
+                    "facilities": ["24/7 Cardiac Cath Lab", "Level 1 Trauma ICU", "Blood Bank", "Advanced Ventilators", "24/7 Pharmacy"],
+                    "photo_url": "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=600&auto=format&fit=crop&q=80",
+                    "google_maps_url": "https://maps.google.com/?q=28.5273,77.2144",
+                    "rating": 4.8
+                },
+                {
+                    "id": "hosp2",
+                    "name": "All India Institute of Medical Sciences (AIIMS)",
+                    "category": "Apex National Referral Hospital",
+                    "address": "Sri Aurobindo Marg, Ansari Nagar",
+                    "city": "New Delhi",
+                    "state": "Delhi",
+                    "pincode": "110029",
+                    "emergency_phone": "108 / 011-26588500",
+                    "reception_phone": "011-26588700",
+                    "email": "info@aiims.edu",
+                    "emergency_24x7": True,
+                    "ambulance_available": True,
+                    "facilities": ["24/7 Emergency Wing", "Burn Care", "Organ Transplant Center", "Govt Subsidized Care", "Air Ambulance Heliport"],
+                    "photo_url": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&auto=format&fit=crop&q=80",
+                    "google_maps_url": "https://maps.google.com/?q=28.5672,77.2100",
+                    "rating": 4.9
+                },
+                {
+                    "id": "hosp3",
+                    "name": "Fortis Escorts Heart Institute",
+                    "category": "Dedicated Cardiac Super-Speciality",
+                    "address": "Okhla Road, Sukhdev Vihar Metro Station",
+                    "city": "New Delhi",
+                    "state": "Delhi",
+                    "pincode": "110025",
+                    "emergency_phone": "+91-11-47135000",
+                    "reception_phone": "+91-11-26825000",
+                    "email": "escorts@fortishealthcare.com",
+                    "emergency_24x7": True,
+                    "ambulance_available": True,
+                    "facilities": ["24/7 Heart Attack Center", "Cardiac Ambulance", "Pediatric Heart Surgery", "ECMO Support"],
+                    "photo_url": "https://images.unsplash.com/photo-1632833239869-a37e3a5806d2?w=600&auto=format&fit=crop&q=80",
+                    "google_maps_url": "https://maps.google.com/?q=28.5606,77.2818",
+                    "rating": 4.85
                 }
             ],
             "medicines": [
                 {
-                    "id": "m1",
-                    "name": "Metoprolol Succinate",
-                    "dosage": "25mg",
-                    "frequency": "Once daily",
-                    "timing": "08:00 AM",
-                    "meal_relation": "After Breakfast",
-                    "purpose": "Blood pressure & heart rate regulation",
-                    "taken_today": True,
-                    "stock_count": 28
+                    "id": "med1",
+                    "brand_name": "Dolo 650 / Calpol",
+                    "generic_name": "Paracetamol (Acetaminophen) 650mg",
+                    "category": "Fever & Pain Relief",
+                    "illness_treated": "High Fever, Body Ache, Headache, Flu Symptoms (Yellow Zone)",
+                    "dosage_adult": "1 tablet (650mg) after food",
+                    "frequency": "Every 6-8 hours as needed (Max 3/day)",
+                    "meal_instruction": "Strictly after food with full glass of water",
+                    "precautions": "Do not exceed 3000mg per 24 hours. Avoid alcohol. Caution in severe liver disease.",
+                    "side_effects": "Rare: mild nausea or skin rash. Generally well-tolerated.",
+                    "prescription_required": False,
+                    "price_inr": 32.0
                 },
                 {
-                    "id": "m2",
-                    "name": "Atorvastatin",
-                    "dosage": "10mg",
-                    "frequency": "Once daily",
-                    "timing": "08:30 PM",
-                    "meal_relation": "After Dinner",
-                    "purpose": "Cholesterol & lipid management",
-                    "taken_today": False,
-                    "stock_count": 14
+                    "id": "med2",
+                    "brand_name": "Electral / W.H.O ORS",
+                    "generic_name": "Oral Rehydration Salts (Dextrose, Sodium Chloride, Potassium Chloride)",
+                    "category": "Hydration & Electrolytes",
+                    "illness_treated": "Dehydration, Resting Tachycardia (High Heart Rate), Diarrhea, Heat Stroke",
+                    "dosage_adult": "1 sachet reconstituted in 1 liter clean drinking water",
+                    "frequency": "Sip regularly throughout the day",
+                    "meal_instruction": "Any time, sip slowly",
+                    "precautions": "Consume prepared solution within 24 hours. Do not boil prepared solution.",
+                    "side_effects": "None when diluted properly.",
+                    "prescription_required": False,
+                    "price_inr": 22.0
                 },
                 {
-                    "id": "m3",
-                    "name": "Vitamin D3 (Cholecalciferol)",
-                    "dosage": "60,000 IU",
-                    "frequency": "Weekly (Sunday)",
-                    "timing": "10:00 AM",
-                    "meal_relation": "With Milk",
-                    "purpose": "Bone & immunity support",
-                    "taken_today": True,
-                    "stock_count": 8
+                    "id": "med3",
+                    "brand_name": "Pan-D / Pantocid DSR",
+                    "generic_name": "Pantoprazole 40mg + Domperidone 30mg",
+                    "category": "Acidity, GERD & Nausea",
+                    "illness_treated": "Severe Acidity, Heartburn, Acid Reflux, Gastric Nausea",
+                    "dosage_adult": "1 capsule once daily in morning",
+                    "frequency": "Once a day for 5-7 days",
+                    "meal_instruction": "30 to 45 minutes BEFORE breakfast with water",
+                    "precautions": "Do not crush or chew capsule. Consult doctor if symptoms persist over 14 days.",
+                    "side_effects": "Mild headache, dry mouth, dizziness.",
+                    "prescription_required": True,
+                    "price_inr": 185.0
                 },
                 {
-                    "id": "m4",
-                    "name": "Paracetamol (SOS)",
-                    "dosage": "650mg",
-                    "frequency": "As needed (Max 3/day)",
-                    "timing": "When fever > 37.5°C",
-                    "meal_relation": "After Food",
-                    "purpose": "Fever & body ache relief (Yellow Zone)",
-                    "taken_today": False,
-                    "stock_count": 20
+                    "id": "med4",
+                    "brand_name": "Metolar-XR / Betaloc",
+                    "generic_name": "Metoprolol Succinate Extended Release 25mg / 50mg",
+                    "category": "Cardiac & Blood Pressure",
+                    "illness_treated": "Hypertension (High BP), Angina, Tachycardia Arrhythmia, Post-MI Care",
+                    "dosage_adult": "25mg once daily",
+                    "frequency": "Every morning at the same hour",
+                    "meal_instruction": "Immediately after breakfast",
+                    "precautions": "Never discontinue abruptly. Monitor resting pulse. Contraindicated in severe asthma.",
+                    "side_effects": "Fatigue, slow heartbeat (bradycardia), cold hands.",
+                    "prescription_required": True,
+                    "price_inr": 140.0
+                },
+                {
+                    "id": "med5",
+                    "brand_name": "Augmentin 625 Duo",
+                    "generic_name": "Amoxicillin 500mg + Clavulanic Acid 125mg",
+                    "category": "Antibiotic (Broad Spectrum)",
+                    "illness_treated": "Bacterial Chest Infection, Severe Bronchitis, Sinusitis, Dental Abscess, Skin Infection",
+                    "dosage_adult": "1 tablet twice daily",
+                    "frequency": "Twice daily after meals for complete 5-day course",
+                    "meal_instruction": "At start of a meal to reduce GI discomfort",
+                    "precautions": "Do not skip doses. Complete the full antibiotic course. Contraindicated in penicillin allergy.",
+                    "side_effects": "Mild diarrhea, loose stools, nausea.",
+                    "prescription_required": True,
+                    "price_inr": 210.0
+                },
+                {
+                    "id": "med6",
+                    "brand_name": "Cetrizine / Okacet",
+                    "generic_name": "Cetirizine Hydrochloride 10mg",
+                    "category": "Antihistamine & Allergy",
+                    "illness_treated": "Runny Nose, Allergic Rhinitis, Sneezing, Skin Itching & Hives",
+                    "dosage_adult": "1 tablet (10mg) at night",
+                    "frequency": "Once daily at bedtime",
+                    "meal_instruction": "With or without food",
+                    "precautions": "May cause mild drowsiness. Avoid driving or heavy machinery after consumption.",
+                    "side_effects": "Sleepiness, dry mouth.",
+                    "prescription_required": False,
+                    "price_inr": 28.0
+                },
+                {
+                    "id": "med7",
+                    "brand_name": "Glycomet-GP 1 / Glycomet 500",
+                    "generic_name": "Metformin Hydrochloride 500mg",
+                    "category": "Diabetes Management",
+                    "illness_treated": "Type 2 Diabetes Mellitus, Insulin Resistance",
+                    "dosage_adult": "500mg twice daily with meals",
+                    "frequency": "With breakfast and dinner",
+                    "meal_instruction": "Take with meals to minimize stomach upset",
+                    "precautions": "Monitor fasting blood glucose and HbA1c regularly. Maintain adequate kidney function.",
+                    "side_effects": "Abdominal discomfort, metallic taste.",
+                    "prescription_required": True,
+                    "price_inr": 65.0
                 }
             ],
-            "appointments": [
+            "gov_schemes": [
                 {
-                    "id": "apt1",
-                    "doctor_name": "Dr. Sameer Verma, MD, DM",
-                    "specialty": "Cardiology",
-                    "hospital": "Max Super Speciality Hospital, New Delhi",
-                    "date": "Tomorrow, 11:30 AM",
-                    "time": "11:30 AM",
-                    "mode": "Teleconsultation",
-                    "status": "Confirmed",
-                    "consultation_notes": "Routine 3-month review of ECG & MAX30102 pulse logs."
+                    "id": "gov1",
+                    "scheme_name": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY)",
+                    "authority": "National Health Authority (NHA), Ministry of Health & Family Welfare",
+                    "category": "Cashless Health Insurance (₹5 Lakhs/Family)",
+                    "description": "World's largest government-funded healthcare assurance scheme providing health cover of ₹5 Lakhs per family per year for secondary and tertiary care hospitalization across India.",
+                    "benefits": "Cashless inpatient hospital care at over 28,000 empaneled public & private hospitals. Covers pre-existing conditions, ICU charges, surgeries, diagnostics, and medicines.",
+                    "eligibility": "Families identified under SECC 2011 database, rural deprivation criteria, and urban occupational categories. Check eligibility with Aadhaar or Ration Card.",
+                    "helpline_number": "14555 / 1800-111-565",
+                    "official_portal_url": "https://pmjay.gov.in"
                 },
                 {
-                    "id": "apt2",
-                    "doctor_name": "Dr. Priya Sengupta, MD",
-                    "specialty": "Internal Medicine",
-                    "hospital": "Apollo Health City",
-                    "date": "Next Monday, 04:00 PM",
-                    "time": "04:00 PM",
-                    "mode": "In-Clinic",
-                    "status": "Scheduled",
-                    "consultation_notes": "Follow up on seasonal fever and general vitals screening."
+                    "id": "gov2",
+                    "scheme_name": "Pradhan Mantri Bhartiya Janaushadhi Pariyojana (PMBJP)",
+                    "authority": "Pharmaceuticals & Medical Devices Bureau of India (PMBI)",
+                    "category": "Affordable Generic Medicines (50% to 90% Savings)",
+                    "description": "Special government pharmacies providing quality generic medicines, surgical devices, and nutraceuticals at 50% to 90% cheaper prices than branded market alternatives.",
+                    "benefits": "Over 1,900 essential medicines and 290 surgical devices available at designated Jan Aushadhi Kendras in almost every district across the country.",
+                    "eligibility": "Open to all Indian citizens without any income criteria. Valid doctor prescription required for Rx drugs.",
+                    "helpline_number": "1800-180-8080",
+                    "official_portal_url": "https://janaushadhi.gov.in"
+                },
+                {
+                    "id": "gov3",
+                    "scheme_name": "Emergency 108 / 102 National Ambulance Service",
+                    "authority": "National Health Mission (NHM)",
+                    "category": "24x7 Free Emergency Medical Response",
+                    "description": "Toll-free 24x7 emergency ambulance network providing Basic Life Support (BLS) and Advanced Life Support (ALS) ambulances equipped with oxygen, defibrillators, and paramedics.",
+                    "benefits": "Free rapid transport for trauma accidents, cardiac arrests, stroke, maternal emergencies, and critical patient transfer to nearest government or empaneled hospitals.",
+                    "eligibility": "Free for all emergency situations.",
+                    "helpline_number": "108 (Emergency Trauma / Critical) / 102 (Maternal & Child)",
+                    "official_portal_url": "https://nhm.gov.in"
+                },
+                {
+                    "id": "gov4",
+                    "scheme_name": "e-RaktKosh National Blood Bank Network",
+                    "authority": "Ministry of Health & Family Welfare",
+                    "category": "Live Blood Stock & Donor Portal",
+                    "description": "Centralized portal linking over 3,000 licensed blood banks across India. Allows patients and doctors to check live blood group availability in real-time.",
+                    "benefits": "Find nearby blood bank inventory, request emergency blood units, find voluntary blood donation camps.",
+                    "eligibility": "Available for all patients in emergency need.",
+                    "helpline_number": "104 (Health Helpline) / 011-23063233",
+                    "official_portal_url": "https://eraktkosh.mohfw.gov.in"
+                },
+                {
+                    "id": "gov5",
+                    "scheme_name": "Ayushman Bharat Health Account (ABHA Card)",
+                    "authority": "National Digital Health Mission (NDHM)",
+                    "category": "Digital Medical Records & Unique Health ID",
+                    "description": "14-digit unique digital health identification enabling patients to securely store and share electronic health records, lab reports, and prescriptions with verified doctors across India.",
+                    "benefits": "Paperless hospital check-in, unified lab history, verified digital consent for second opinions.",
+                    "eligibility": "Any citizen with Aadhaar or Mobile number.",
+                    "helpline_number": "14477",
+                    "official_portal_url": "https://abha.abdm.gov.in"
                 }
             ],
-            "lab_reports": [
-                {
-                    "id": "lab1",
-                    "test_name": "Lipid Profile - Total Cholesterol",
-                    "date": "24 Oct 2026",
-                    "result_value": "178 mg/dL",
-                    "reference_range": "< 200 mg/dL",
-                    "status": "Normal",
-                    "category": "Cardiac"
-                },
-                {
-                    "id": "lab2",
-                    "test_name": "Fasting Blood Glucose",
-                    "date": "24 Oct 2026",
-                    "result_value": "94 mg/dL",
-                    "reference_range": "70 - 100 mg/dL",
-                    "status": "Normal",
-                    "category": "Endocrine"
-                },
-                {
-                    "id": "lab3",
-                    "test_name": "Serum Creatinine",
-                    "date": "24 Oct 2026",
-                    "result_value": "0.9 mg/dL",
-                    "reference_range": "0.7 - 1.2 mg/dL",
-                    "status": "Normal",
-                    "category": "Kidney"
-                },
-                {
-                    "id": "lab4",
-                    "test_name": "Complete Blood Count (Hemoglobin)",
-                    "date": "24 Oct 2026",
-                    "result_value": "14.2 g/dL",
-                    "reference_range": "13.0 - 17.0 g/dL",
-                    "status": "Normal",
-                    "category": "Hematology"
-                }
-            ],
-            "patient_profile": {
-                "name": "Rajesh Sharma",
-                "age": 58,
-                "gender": "Male",
-                "blood_group": "B+",
-                "height_cm": 174,
-                "weight_kg": 72,
-                "allergies": ["Penicillin", "Dust Mites"],
-                "chronic_conditions": ["Mild Hypertension (controlled)"],
-                "emergency_notes": "Allergic to penicillin. Wears ESP32 IoT band with MAX30102 and MPU6050."
-            },
-            "water_logs": [
-                {"time": "08:00 AM", "amount_ml": 300},
-                {"time": "10:30 AM", "amount_ml": 250},
-                {"time": "01:00 PM", "amount_ml": 400},
-                {"time": "03:30 PM", "amount_ml": 300},
-                {"time": "06:00 PM", "amount_ml": 350}
-            ]
+            "consultations": []
         }
 
     def insert(self, collection: str, doc: Dict[str, Any]) -> str:
@@ -179,12 +318,11 @@ class FallbackStore:
         if collection not in self.data:
             self.data[collection] = []
         self.data[collection].append(doc)
-        # Cap telemetry in memory to 500 items
         if collection == "telemetry" and len(self.data[collection]) > 500:
             self.data[collection] = self.data[collection][-500:]
         return doc["id"]
 
-    def find(self, collection: str, limit: int = 50, sort_desc: bool = True) -> List[Dict[str, Any]]:
+    def find(self, collection: str, limit: int = 100, sort_desc: bool = True) -> List[Dict[str, Any]]:
         items = self.data.get(collection, [])
         if sort_desc:
             return list(reversed(items))[:limit]
@@ -213,36 +351,33 @@ db = None
 try:
     from pymongo import MongoClient
     mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
-    # verify connection
     mongo_client.server_info()
     db = mongo_client[DB_NAME]
     print(f"Connected successfully to MongoDB at {MONGODB_URI}")
 except Exception as e:
-    print(f"MongoDB not connected ({e}). Using robust in-memory database store.")
+    print(f"MongoDB offline/unreachable ({e}). Using robust fallback database store.")
     mongo_client = None
     db = None
 
-def get_db():
-    return db
-
+# Telemetry
 def save_telemetry(payload: Dict[str, Any]):
     payload["timestamp"] = payload.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S")
     store.insert("telemetry", payload)
     if db is not None:
         try:
             db.telemetry.insert_one(payload.copy())
-        except Exception as e:
-            print("MongoDB insert failed:", e)
+        except Exception:
+            pass
 
 def get_recent_telemetry(limit: int = 50) -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            cursor = db.telemetry.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit)
-            return list(cursor)
+            return list(db.telemetry.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit))
         except Exception:
             pass
     return store.find("telemetry", limit=limit)
 
+# Alerts
 def save_alert(alert_data: Dict[str, Any]):
     alert_data["timestamp"] = alert_data.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S")
     doc_id = store.insert("alerts", alert_data)
@@ -256,50 +391,172 @@ def save_alert(alert_data: Dict[str, Any]):
 def get_alerts(limit: int = 50) -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            cursor = db.alerts.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit)
-            return list(cursor)
+            return list(db.alerts.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit))
         except Exception:
             pass
     return store.find("alerts", limit=limit)
 
-def get_emergency_contacts() -> List[Dict[str, Any]]:
-    return store.find("contacts", limit=20, sort_desc=False)
+# SOS Config
+def get_sos_config() -> Dict[str, Any]:
+    if db is not None:
+        try:
+            cfg = db.sos_config.find_one({}, {"_id": 0})
+            if cfg:
+                return cfg
+        except Exception:
+            pass
+    return store.data.get("sos_config", {})
 
-def add_emergency_contact(contact: Dict[str, Any]):
-    return store.insert("contacts", contact)
+def update_sos_config(config: Dict[str, Any]):
+    store.data["sos_config"].update(config)
+    if db is not None:
+        try:
+            db.sos_config.update_one({}, {"$set": config}, upsert=True)
+        except Exception:
+            pass
+    return store.data["sos_config"]
 
+# Doctors CRUD
+def get_doctors() -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            return list(db.doctors.find({}, {"_id": 0}))
+        except Exception:
+            pass
+    return store.find("doctors", limit=100, sort_desc=False)
+
+def add_doctor(doc: Dict[str, Any]) -> str:
+    new_id = store.insert("doctors", doc)
+    if db is not None:
+        try:
+            db.doctors.insert_one(doc.copy())
+        except Exception:
+            pass
+    return new_id
+
+def update_doctor(doc_id: str, updates: Dict[str, Any]) -> bool:
+    success = store.update("doctors", doc_id, updates)
+    if db is not None:
+        try:
+            db.doctors.update_one({"id": doc_id}, {"$set": updates})
+        except Exception:
+            pass
+    return success
+
+def delete_doctor(doc_id: str) -> bool:
+    success = store.delete("doctors", doc_id)
+    if db is not None:
+        try:
+            db.doctors.delete_one({"id": doc_id})
+        except Exception:
+            pass
+    return success
+
+# Hospitals & Clinics CRUD
+def get_hospitals() -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            return list(db.hospitals.find({}, {"_id": 0}))
+        except Exception:
+            pass
+    return store.find("hospitals", limit=100, sort_desc=False)
+
+def add_hospital(hosp: Dict[str, Any]) -> str:
+    new_id = store.insert("hospitals", hosp)
+    if db is not None:
+        try:
+            db.hospitals.insert_one(hosp.copy())
+        except Exception:
+            pass
+    return new_id
+
+def update_hospital(hosp_id: str, updates: Dict[str, Any]) -> bool:
+    success = store.update("hospitals", hosp_id, updates)
+    if db is not None:
+        try:
+            db.hospitals.update_one({"id": hosp_id}, {"$set": updates})
+        except Exception:
+            pass
+    return success
+
+def delete_hospital(hosp_id: str) -> bool:
+    success = store.delete("hospitals", hosp_id)
+    if db is not None:
+        try:
+            db.hospitals.delete_one({"id": hosp_id})
+        except Exception:
+            pass
+    return success
+
+# Medicines CRUD
 def get_medicines() -> List[Dict[str, Any]]:
-    return store.find("medicines", limit=50, sort_desc=False)
+    if db is not None:
+        try:
+            return list(db.medicines.find({}, {"_id": 0}))
+        except Exception:
+            pass
+    return store.find("medicines", limit=200, sort_desc=False)
 
-def update_medicine_status(med_id: str, taken: bool):
-    return store.update("medicines", med_id, {"taken_today": taken})
+def add_medicine(med: Dict[str, Any]) -> str:
+    new_id = store.insert("medicines", med)
+    if db is not None:
+        try:
+            db.medicines.insert_one(med.copy())
+        except Exception:
+            pass
+    return new_id
 
-def add_medicine(med: Dict[str, Any]):
-    return store.insert("medicines", med)
+def update_medicine(med_id: str, updates: Dict[str, Any]) -> bool:
+    success = store.update("medicines", med_id, updates)
+    if db is not None:
+        try:
+            db.medicines.update_one({"id": med_id}, {"$set": updates})
+        except Exception:
+            pass
+    return success
 
-def get_appointments() -> List[Dict[str, Any]]:
-    return store.find("appointments", limit=20, sort_desc=False)
+def delete_medicine(med_id: str) -> bool:
+    success = store.delete("medicines", med_id)
+    if db is not None:
+        try:
+            db.medicines.delete_one({"id": med_id})
+        except Exception:
+            pass
+    return success
 
-def add_appointment(apt: Dict[str, Any]):
-    return store.insert("appointments", apt)
+# Government Schemes CRUD
+def get_gov_schemes() -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            return list(db.gov_schemes.find({}, {"_id": 0}))
+        except Exception:
+            pass
+    return store.find("gov_schemes", limit=50, sort_desc=False)
 
-def get_lab_reports() -> List[Dict[str, Any]]:
-    return store.find("lab_reports", limit=50, sort_desc=False)
+def add_gov_scheme(scheme: Dict[str, Any]) -> str:
+    new_id = store.insert("gov_schemes", scheme)
+    if db is not None:
+        try:
+            db.gov_schemes.insert_one(scheme.copy())
+        except Exception:
+            pass
+    return new_id
 
-def add_lab_report(rep: Dict[str, Any]):
-    return store.insert("lab_reports", rep)
+# Real Consultations Booking
+def save_consultation(booking: Dict[str, Any]) -> str:
+    booking["timestamp"] = booking.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S")
+    new_id = store.insert("consultations", booking)
+    if db is not None:
+        try:
+            db.consultations.insert_one(booking.copy())
+        except Exception:
+            pass
+    return new_id
 
-def get_patient_profile() -> Dict[str, Any]:
-    return store.data.get("patient_profile", {})
-
-def update_patient_profile(profile: Dict[str, Any]):
-    store.data["patient_profile"].update(profile)
-    return store.data["patient_profile"]
-
-def get_water_logs():
-    return store.data.get("water_logs", [])
-
-def add_water_log(amount_ml: int):
-    entry = {"time": time.strftime("%I:%M %p"), "amount_ml": amount_ml}
-    store.data.setdefault("water_logs", []).append(entry)
-    return entry
+def get_consultations() -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            return list(db.consultations.find({}, {"_id": 0}))
+        except Exception:
+            pass
+    return store.find("consultations", limit=100)
