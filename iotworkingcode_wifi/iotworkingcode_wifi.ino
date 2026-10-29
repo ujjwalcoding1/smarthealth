@@ -24,11 +24,11 @@
 // =====================================================
 // WIFI & BACKEND CONFIGURATION
 // =====================================================
-const char* WIFI_SSID = "YOUR_WIFI_NAME";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "Ujjwal Mehta";
+const char* WIFI_PASSWORD = "Ujjwal@1856";
 
 // Render deployment URL or local IP: e.g. "https://smarthealth-backend.onrender.com" or "http://192.168.1.100:8000"
-const char* SERVER_URL = "http://192.168.1.100:8000";
+const char* SERVER_URL = "http:// 10.25.212.245:8000";
 
 // =====================================================
 // PIN CONFIGURATION
