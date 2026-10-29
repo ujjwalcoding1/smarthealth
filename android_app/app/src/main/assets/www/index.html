@@ -719,6 +719,7 @@
     let waterMl = 1600;
     let selectedDoctor = null;
     let lastBookingDetails = null;
+    let lastSosDismissedAt = 0;
 
     // Persisted SOS Configuration (Requirement #4)
     let sosConfig = {
@@ -963,7 +964,7 @@
             const data = await res.json();
             telemetry = data.telemetry;
             updateUI(data.evaluation);
-            if (data.evaluation.fall_alert_active || telemetry.impact_detected) {
+            if ((data.evaluation.fall_alert_active || telemetry.impact_detected) && (Date.now() - lastSosDismissedAt > 15000)) {
               triggerFallSOS();
             }
             return;
@@ -1214,6 +1215,7 @@
     }
 
     function cancelSOS() {
+      lastSosDismissedAt = Date.now();
       if (countdownInterval) clearInterval(countdownInterval);
       document.getElementById('sosModal').classList.remove('active');
       telemetry.impact_detected = false;

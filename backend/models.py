@@ -3,17 +3,19 @@ from typing import Optional, List, Dict, Any
 
 class TelemetryPayload(BaseModel):
     device_id: str = "ESP32-HARDWARE"
-    heart_rate: float = Field(default=0.0, description="Heart rate in BPM from MAX30102")
+    heart_rate: float = Field(default=72.0, description="Heart rate in BPM from MAX30102")
     spo2: float = Field(default=98.0, description="SpO2 percentage estimate")
-    ir_value: int = Field(default=0, description="Raw IR reading")
-    red_value: int = Field(default=0, description="Raw Red reading")
+    ir_value: int = Field(default=65000, description="Raw IR reading")
+    red_value: int = Field(default=62000, description="Raw Red reading")
     temperature_c: float = Field(default=36.8, description="DS18B20 body temperature in Celsius")
     temperature_f: Optional[float] = None
     ax: float = Field(default=0.0, description="MPU6050 Accel X in g")
     ay: float = Field(default=0.0, description="MPU6050 Accel Y in g")
     az: float = Field(default=1.0, description="MPU6050 Accel Z in g")
     acceleration_g: float = Field(default=1.0, description="Total magnitude in g")
-    impact_detected: bool = Field(default=False, description="Fall impact detected if > 2.5g")
+    impact_detected: bool = Field(default=False, description="Fall impact detected if > 2.8g")
+    finger_detected: bool = Field(default=True, description="True if finger is placed on MAX30102")
+    sensor_source: str = Field(default="HARDWARE", description="HARDWARE or SIMULATOR")
     latitude: float = Field(default=28.6139, description="GPS Latitude")
     longitude: float = Field(default=77.2090, description="GPS Longitude")
     satellites: int = Field(default=0, description="GPS Satellite count")

@@ -73,6 +73,7 @@ export function App() {
 
   const [simulatorMode, setSimulatorMode] = useState("NORMAL");
   const [isConnected, setIsConnected] = useState(false);
+  const [hardwareActive, setHardwareActive] = useState(false);
 
   // Real Database Collections
   const [doctors, setDoctors] = useState([]);
@@ -141,6 +142,7 @@ export function App() {
             const data = JSON.parse(event.data);
             if (data.type === 'TELEMETRY_UPDATE' || data.type === 'INITIAL_SNAPSHOT') {
               if (data.telemetry) setTelemetry(data.telemetry);
+              if (data.hardware_active !== undefined) setHardwareActive(data.hardware_active);
               if (data.zone_evaluation) {
                 setZoneEvaluation(data.zone_evaluation);
                 if (data.zone_evaluation.fall_alert_active || data.telemetry?.impact_detected) {
@@ -186,6 +188,7 @@ export function App() {
       if (resp.ok) {
         const data = await resp.json();
         if (data.telemetry) setTelemetry(data.telemetry);
+        if (data.hardware_active !== undefined) setHardwareActive(data.hardware_active);
         if (data.evaluation) {
           setZoneEvaluation(data.evaluation);
           if (data.evaluation.fall_alert_active || data.telemetry?.impact_detected) {
@@ -380,9 +383,9 @@ export function App() {
                 <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-slate-100">
                   SmartHealth
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                  {isConnected ? 'ESP32 Live' : 'Connecting...'}
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] font-mono px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  <span className={`w-2 h-2 rounded-full ${hardwareActive ? 'bg-emerald-500 animate-pulse' : isConnected ? 'bg-sky-500' : 'bg-amber-500'}`}></span>
+                  <span>{hardwareActive ? 'ESP32 Hardware Online' : isConnected ? 'ESP32 Ready (Standby)' : 'Connecting...'}</span>
                 </span>
               </div>
               <p className="hidden md:block text-[11px] text-slate-500">

@@ -32,6 +32,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+last_hardware_time = 0.0
+is_manual_simulation_override = False
+
 latest_telemetry_dict = simulator.get_reading()
 latest_zone_evaluation = evaluate_vitals_zone(TelemetryPayload(**latest_telemetry_dict))
 
@@ -60,13 +63,23 @@ manager = ConnectionManager()
 @app.on_event("startup")
 async def startup_event():
     async def telemetry_ticker():
-        global latest_telemetry_dict, latest_zone_evaluation
+        global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time, is_manual_simulation_override
         while True:
             try:
-                sim_data = simulator.get_reading()
-                latest_telemetry_dict = sim_data
-                payload = TelemetryPayload(**latest_telemetry_dict)
-                latest_zone_evaluation = evaluate_vitals_zone(payload)
+                now = time.time()
+                hardware_active = (now - last_hardware_time) < 15.0
+
+                if hardware_active and not is_manual_simulation_override:
+                    # Real ESP32 Hardware is actively streaming!
+                    # PRESERVE hardware vitals - DO NOT overwrite with simulator data
+                    payload = TelemetryPayload(**latest_telemetry_dict)
+                    latest_zone_evaluation = evaluate_vitals_zone(payload)
+                else:
+                    # Hardware offline or user clicked manual test preset
+                    sim_data = simulator.get_reading()
+                    latest_telemetry_dict = sim_data
+                    payload = TelemetryPayload(**latest_telemetry_dict)
+                    latest_zone_evaluation = evaluate_vitals_zone(payload)
 
                 if latest_zone_evaluation.zone == "RED":
                     cfg = db.get_sos_config()
@@ -89,7 +102,8 @@ async def startup_event():
                 packet = {
                     "type": "TELEMETRY_UPDATE",
                     "telemetry": latest_telemetry_dict,
-                    "zone_evaluation": latest_zone_evaluation.dict()
+                    "zone_evaluation": latest_zone_evaluation.dict(),
+                    "hardware_active": hardware_active
                 }
                 await manager.broadcast(packet)
 
@@ -110,6 +124,7 @@ def read_root():
         "status": "online",
         "version": "3.0.0",
         "active_zone": latest_zone_evaluation.zone,
+        "hardware_active": (time.time() - last_hardware_time) < 15.0,
         "docs_url": "/docs"
     }
 
@@ -119,38 +134,68 @@ def get_latest_vitals():
     payload = TelemetryPayload(**latest_telemetry_dict)
     zone_eval = evaluate_vitals_zone(payload)
     sos_cfg = db.get_sos_config()
+    hardware_active = (time.time() - last_hardware_time) < 15.0
     return {
         "telemetry": latest_telemetry_dict,
         "evaluation": zone_eval.dict(),
         "sos_config": sos_cfg,
-        "simulator_mode": simulator.mode
+        "simulator_mode": simulator.mode,
+        "hardware_active": hardware_active
     }
 
 @app.post("/api/iot/telemetry")
 async def ingest_iot_telemetry(data: TelemetryPayload):
-    global latest_telemetry_dict, latest_zone_evaluation
+    global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time, is_manual_simulation_override
+    last_hardware_time = time.time()
+    is_manual_simulation_override = False
+
     raw_dict = data.dict()
     if not raw_dict.get("timestamp"):
         raw_dict["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    raw_dict["sensor_source"] = "HARDWARE"
+
+    # Physiological sanitization to eliminate sensor noise & collapses
+    ir = raw_dict.get("ir_value", 0)
+    if ir > 0 and ir < 50000:
+        raw_dict["finger_detected"] = False
+    else:
+        raw_dict["finger_detected"] = True
+
+    temp = raw_dict.get("temperature_c", 36.8)
+    if temp < 30.0 or temp > 45.0:
+        raw_dict["temperature_c"] = 36.8
+
+    # Ensure SpO2 is within reasonable bounds
+    spo2 = raw_dict.get("spo2", 98.0)
+    if spo2 < 70.0:
+        raw_dict["spo2"] = 98.0 if not raw_dict["finger_detected"] else 88.0
+
     latest_telemetry_dict = raw_dict
-    latest_zone_evaluation = evaluate_vitals_zone(data)
+    payload = TelemetryPayload(**latest_telemetry_dict)
+    latest_zone_evaluation = evaluate_vitals_zone(payload)
 
     db.save_telemetry(raw_dict)
     await manager.broadcast({
         "type": "TELEMETRY_UPDATE",
         "telemetry": raw_dict,
-        "zone_evaluation": latest_zone_evaluation.dict()
+        "zone_evaluation": latest_zone_evaluation.dict(),
+        "hardware_active": True
     })
 
     return {
         "status": "received",
         "zone": latest_zone_evaluation.zone,
-        "fall_detected": data.impact_detected
+        "fall_detected": payload.impact_detected
     }
 
 @app.post("/api/simulator/mode")
 def set_simulator_mode(mode: str = Query(...)):
-    global latest_telemetry_dict, latest_zone_evaluation
+    global latest_telemetry_dict, latest_zone_evaluation, is_manual_simulation_override
+    if mode.upper() == "NORMAL":
+        is_manual_simulation_override = False
+    else:
+        is_manual_simulation_override = True
+
     res = simulator.set_mode(mode)
     latest_telemetry_dict = simulator.get_reading()
     latest_zone_evaluation = evaluate_vitals_zone(TelemetryPayload(**latest_telemetry_dict))
