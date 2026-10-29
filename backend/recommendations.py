@@ -39,12 +39,14 @@ def evaluate_vitals_zone(telemetry: TelemetryPayload) -> ZoneEvaluation:
     if finger_on and 70 <= spo2 < 90:
         critical_triggers.append(f"Critical Hypoxemia: SpO2 dangerously low ({spo2:.1f}%)")
         
-    # 4. Body Temperature Check (Filter out sensor disconnect -127°C or 0°C readings)
-    if 30.0 <= temp_c <= 44.0:
-        if temp_c >= 39.5:
-            critical_triggers.append(f"Hyperpyrexia: High critical fever ({temp_c:.1f}°C / {temp_c*9/5+32:.1f}°F)")
-        elif temp_c < 35.0:
-            critical_triggers.append(f"Hypothermia: Body temperature dangerously low ({temp_c:.1f}°C)")
+    # 4. Body Temperature Check
+    # In open air, DS18B20 reads ambient room temperature (e.g. 18°C - 28°C).
+    # Temperature < 32°C indicates the probe is measuring ambient air / not attached to body.
+    # True clinical hypothermia is strictly evaluated between 32.0°C and 34.9°C.
+    if temp_c >= 39.5 and temp_c <= 44.0:
+        critical_triggers.append(f"Hyperpyrexia: High critical fever ({temp_c:.1f}°C / {temp_c*9/5+32:.1f}°F)")
+    elif 32.0 <= temp_c < 35.0:
+        critical_triggers.append(f"Clinical Hypothermia: Body temperature dangerously low ({temp_c:.1f}°C)")
 
     if critical_triggers:
         return ZoneEvaluation(

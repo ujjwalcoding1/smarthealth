@@ -31,8 +31,8 @@ export function VitalsGauges({ telemetry, zoneEvaluation, lang, t }) {
   };
 
   const getTempColor = (c) => {
-    if (c >= 39.5 || c < 35.0) return 'text-red-600 bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800';
-    if (c >= 37.3) return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800';
+    if (c >= 39.5 || (c >= 32.0 && c < 35.0)) return 'text-red-600 bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-800';
+    if (c >= 37.3 && c < 39.5) return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800';
     return 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800';
   };
 
@@ -123,7 +123,13 @@ export function VitalsGauges({ telemetry, zoneEvaluation, lang, t }) {
         </div>
 
         <div className="mt-2 text-xs flex items-center justify-between text-slate-600 dark:text-slate-400">
-          <span>{tempC >= 37.3 ? 'Mild Fever (Yellow Zone)' : 'Afebrile (Normal)'}</span>
+          <span>
+            {tempC >= 39.5 ? 'High Fever (Critical)' :
+             tempC >= 37.3 ? 'Mild Fever (Yellow Zone)' :
+             tempC >= 35.0 ? 'Afebrile (Normal Body)' :
+             tempC >= 32.0 ? 'Hypothermia Warning' :
+             'Ambient Room Temp'}
+          </span>
           <span className="font-mono text-[11px]">DS18B20 1-Wire</span>
         </div>
       </div>

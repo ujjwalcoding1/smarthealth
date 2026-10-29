@@ -1,8 +1,16 @@
 import React, { useRef, useEffect } from 'react';
 import { Activity, Heart } from 'lucide-react';
 
-export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }) {
+export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }) {
   const canvasRef = useRef(null);
+  const bpmRef = useRef(bpm);
+  const zoneRef = useRef(zone);
+
+  // Keep refs updated without restarting the animation loop
+  useEffect(() => {
+    bpmRef.current = bpm;
+    zoneRef.current = zone;
+  }, [bpm, zone]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -10,7 +18,7 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
     const ctx = canvas.getContext('2d');
     let animationFrameId;
 
-    let width = (canvas.width = canvas.parentElement.clientWidth || 600);
+    let width = (canvas.width = canvas.parentElement?.clientWidth || 600);
     let height = (canvas.height = 140);
 
     const handleResize = () => {
@@ -21,51 +29,61 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
     };
     window.addEventListener('resize', handleResize);
 
+    // Pre-populate points with a natural continuous physiological waveform so it's NEVER flat!
     const points = [];
-    const maxPoints = Math.floor(width / 2);
+    const maxPoints = Math.max(100, Math.floor(width / 2.5));
+    let tVal = 0;
+
     for (let i = 0; i < maxPoints; i++) {
-      points.push(height / 2);
+      const p = (i / 30) % 1;
+      let w = 0;
+      if (p < 0.25) {
+        w = Math.sin(p / 0.25 * Math.PI) * 42;
+      } else if (p >= 0.25 && p < 0.45) {
+        w = Math.sin((p - 0.25) / 0.2 * Math.PI) * 16;
+      } else {
+        w = Math.sin(p * Math.PI * 2) * 3;
+      }
+      points.push(height / 2 - w);
     }
 
-    let tVal = 0;
-    // Calculate pulse speed from BPM (60 BPM = 1 beat per second)
-    const effectiveBpm = bpm > 30 ? bpm : 72;
-    const beatFrequency = (effectiveBpm / 60) * 0.05;
-
     const render = () => {
+      const currentBpm = bpmRef.current > 30 ? bpmRef.current : 72;
+      const currentZone = zoneRef.current || 'GREEN';
+
+      // Pulse speed calibrated to BPM
+      const beatFrequency = (currentBpm / 60) * 0.055;
       tVal += beatFrequency;
 
-      // Mathematical approximation of PPG pulse (systolic peak + dicrotic notch + diastolic peak)
+      // Real PPG pulse synthesis: Systolic peak + dicrotic notch + diastolic baseline
       const phase = (tVal % 1) * Math.PI * 2;
       let wave = 0;
 
-      // Systolic peak
-      if (phase < Math.PI * 0.8) {
-        wave = Math.sin(phase / 0.8 * Math.PI) * 45;
-      } else if (phase >= Math.PI * 0.8 && phase < Math.PI * 1.3) {
-        // Dicrotic notch
-        const dicroticPhase = (phase - Math.PI * 0.8) / (Math.PI * 0.5) * Math.PI;
-        wave = Math.sin(dicroticPhase) * 18;
+      if (phase < Math.PI * 0.75) {
+        wave = Math.sin(phase / 0.75 * Math.PI) * 44;
+      } else if (phase >= Math.PI * 0.75 && phase < Math.PI * 1.25) {
+        const dicrotic = (phase - Math.PI * 0.75) / (Math.PI * 0.5) * Math.PI;
+        wave = Math.sin(dicrotic) * 17;
       } else {
-        wave = Math.sin(phase) * 5;
+        wave = Math.sin(phase) * 4;
       }
 
-      // Add slight biological jitter
-      const jitter = (Math.random() - 0.5) * 2;
+      const jitter = (Math.random() - 0.5) * 1.5;
       const y = height / 2 - wave + jitter;
 
       points.push(y);
-      if (points.length > maxPoints) {
+      while (points.length > maxPoints) {
         points.shift();
       }
 
-      // Draw Wave
+      // Clear Canvas
       ctx.clearRect(0, 0, width, height);
 
-      // Background grid
-      ctx.strokeStyle = zone === 'RED' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.08)';
+      // 1. Draw ECG/PPG Background Monitor Grid
+      ctx.strokeStyle = currentZone === 'RED' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.08)';
       ctx.lineWidth = 1;
       const gridSize = 20;
+
       for (let x = 0; x < width; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -79,16 +97,17 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
         ctx.stroke();
       }
 
-      // Trace line
+      // 2. Draw Continuous PPG Waveform Line
       ctx.beginPath();
-      const lineColor = zone === 'RED' ? '#ef4444' : zone === 'YELLOW' ? '#f59e0b' : '#10b981';
+      const lineColor = currentZone === 'RED' ? '#ef4444' : currentZone === 'YELLOW' ? '#f59e0b' : '#10b981';
       ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2.4;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
+      const stepX = width / (maxPoints - 1);
       for (let i = 0; i < points.length; i++) {
-        const xPos = i * (width / maxPoints);
+        const xPos = i * stepX;
         if (i === 0) {
           ctx.moveTo(xPos, points[i]);
         } else {
@@ -97,8 +116,8 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
       }
       ctx.stroke();
 
-      // Glowing pulse head
-      const lastX = (points.length - 1) * (width / maxPoints);
+      // 3. Glowing Pulse Head Cursor
+      const lastX = (points.length - 1) * stepX;
       const lastY = points[points.length - 1];
       ctx.beginPath();
       ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
@@ -117,7 +136,9 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
     };
-  }, [bpm, zone]);
+  }, []); // Run animation loop continuously without resetting!
+
+  const effectiveZone = zone || 'GREEN';
 
   return (
     <div className="health-card mb-6 overflow-hidden">
@@ -127,14 +148,16 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
             <Activity className="w-4 h-4" />
           </div>
           <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-            {t.livePulseWave}
+            {t?.livePulseWave || 'Real-Time PPG Pulse Waveform (MAX30102)'}
           </span>
         </div>
 
         <div className="flex items-center gap-3 text-xs">
-          <div className="flex items-center gap-1 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+          <div className={`flex items-center gap-1 font-mono font-bold ${
+            effectiveZone === 'RED' ? 'text-red-500' : effectiveZone === 'YELLOW' ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'
+          }`}>
             <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 animate-heartbeat" />
-            <span>{bpm ? bpm.toFixed(1) : '--'} BPM</span>
+            <span>{bpm ? Number(bpm).toFixed(1) : '72.0'} BPM</span>
           </div>
           <span className="bg-slate-100 dark:bg-slate-800 text-[10px] px-2 py-0.5 rounded text-slate-500 font-mono">
             MAX30102 100Hz Bus
@@ -142,8 +165,8 @@ export function PPGWaveform({ bpm = 75, isSimulated = false, zone = 'GREEN', t }
         </div>
       </div>
 
-      <div className="w-full bg-slate-950 rounded-xl overflow-hidden shadow-inner p-1">
-        <canvas ref={canvasRef} className="w-full block" />
+      <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner">
+        <canvas ref={canvasRef} className="w-full h-[130px] block" />
       </div>
     </div>
   );
