@@ -32,8 +32,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+HARDWARE_TIMEOUT_SECONDS = 30.0  # 30-second window ensures network latency does not trigger false fallback
 last_hardware_time = 0.0
-is_manual_simulation_override = False
 
 latest_telemetry_dict = simulator.get_reading()
 latest_zone_evaluation = evaluate_vitals_zone(TelemetryPayload(**latest_telemetry_dict))
@@ -63,19 +63,20 @@ manager = ConnectionManager()
 @app.on_event("startup")
 async def startup_event():
     async def telemetry_ticker():
-        global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time, is_manual_simulation_override
+        global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time
         while True:
             try:
                 now = time.time()
-                hardware_active = (now - last_hardware_time) < 15.0
+                hardware_active = (now - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS
 
-                if hardware_active and not is_manual_simulation_override:
-                    # Real ESP32 Hardware is actively streaming!
-                    # PRESERVE hardware vitals - DO NOT overwrite with simulator data
+                if hardware_active:
+                    # Physical ESP32 Hardware is ONLINE!
+                    # SIMULATOR IS 100% PAUSED / MUTED to prevent data collision.
+                    # NEVER call simulator.get_reading() while hardware is streaming.
                     payload = TelemetryPayload(**latest_telemetry_dict)
                     latest_zone_evaluation = evaluate_vitals_zone(payload)
                 else:
-                    # Hardware offline or user clicked manual test preset
+                    # ESP32 is OFFLINE: Only now run simulated demo data as fallback
                     sim_data = simulator.get_reading()
                     latest_telemetry_dict = sim_data
                     payload = TelemetryPayload(**latest_telemetry_dict)
@@ -103,7 +104,8 @@ async def startup_event():
                     "type": "TELEMETRY_UPDATE",
                     "telemetry": latest_telemetry_dict,
                     "zone_evaluation": latest_zone_evaluation.dict(),
-                    "hardware_active": hardware_active
+                    "hardware_active": hardware_active,
+                    "simulation_active": not hardware_active
                 }
                 await manager.broadcast(packet)
 
@@ -124,30 +126,31 @@ def read_root():
         "status": "online",
         "version": "3.0.0",
         "active_zone": latest_zone_evaluation.zone,
-        "hardware_active": (time.time() - last_hardware_time) < 15.0,
+        "hardware_active": (time.time() - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS,
         "docs_url": "/docs"
     }
 
 # 1. Telemetry & Zones
 @app.get("/api/iot/latest")
 def get_latest_vitals():
+    now = time.time()
+    hardware_active = (now - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS
     payload = TelemetryPayload(**latest_telemetry_dict)
     zone_eval = evaluate_vitals_zone(payload)
     sos_cfg = db.get_sos_config()
-    hardware_active = (time.time() - last_hardware_time) < 15.0
     return {
         "telemetry": latest_telemetry_dict,
         "evaluation": zone_eval.dict(),
         "sos_config": sos_cfg,
-        "simulator_mode": simulator.mode,
-        "hardware_active": hardware_active
+        "simulator_mode": "PAUSED_HARDWARE_ONLINE" if hardware_active else simulator.mode,
+        "hardware_active": hardware_active,
+        "simulation_active": not hardware_active
     }
 
 @app.post("/api/iot/telemetry")
 async def ingest_iot_telemetry(data: TelemetryPayload):
-    global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time, is_manual_simulation_override
+    global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time
     last_hardware_time = time.time()
-    is_manual_simulation_override = False
 
     raw_dict = data.dict()
     if not raw_dict.get("timestamp"):
@@ -180,22 +183,32 @@ async def ingest_iot_telemetry(data: TelemetryPayload):
         "type": "TELEMETRY_UPDATE",
         "telemetry": raw_dict,
         "zone_evaluation": latest_zone_evaluation.dict(),
-        "hardware_active": True
+        "hardware_active": True,
+        "simulation_active": False
     })
 
     return {
         "status": "received",
         "zone": latest_zone_evaluation.zone,
-        "fall_detected": payload.impact_detected
+        "fall_detected": payload.impact_detected,
+        "hardware_active": True
     }
 
 @app.post("/api/simulator/mode")
 def set_simulator_mode(mode: str = Query(...)):
-    global latest_telemetry_dict, latest_zone_evaluation, is_manual_simulation_override
-    if mode.upper() == "NORMAL":
-        is_manual_simulation_override = False
-    else:
-        is_manual_simulation_override = True
+    global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time
+    now = time.time()
+    hardware_active = (now - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS
+
+    # STRICT HARDWARE ISOLATION: Reject manual simulation override when physical ESP32 is online!
+    if hardware_active:
+        return {
+            "status": "blocked",
+            "message": "Physical ESP32 is currently ONLINE and streaming live telemetry. Disconnect or unplug ESP32 to test simulation mode.",
+            "hardware_active": True,
+            "simulation_active": False,
+            "mode": "HARDWARE_PRIORITY"
+        }
 
     res = simulator.set_mode(mode)
     latest_telemetry_dict = simulator.get_reading()
@@ -204,7 +217,9 @@ def set_simulator_mode(mode: str = Query(...)):
         "status": "success",
         "mode": simulator.mode,
         "telemetry": latest_telemetry_dict,
-        "zone_evaluation": latest_zone_evaluation.dict()
+        "zone_evaluation": latest_zone_evaluation.dict(),
+        "hardware_active": False,
+        "simulation_active": True
     }
 
 # 2. SOS Configuration Management (User can change dial number)

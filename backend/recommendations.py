@@ -16,9 +16,9 @@ def evaluate_vitals_zone(telemetry: TelemetryPayload) -> ZoneEvaluation:
     ir = telemetry.ir_value
 
     # Finger placement check on MAX30102
-    # If ir_value is provided and < 50000, finger is lifted/not placed
+    # If ir_value is provided and < 25000, finger is lifted/not placed
     finger_on = getattr(telemetry, 'finger_detected', True)
-    if ir > 0 and ir < 50000:
+    if ir > 0 and ir < 25000:
         finger_on = False
 
     # Check for Critical Zone (RED)

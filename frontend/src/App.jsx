@@ -256,13 +256,21 @@ export function App() {
   };
 
   const handleSetSimulatorMode = async (mode) => {
+    if (hardwareActive) return;
     setSimulatorMode(mode);
     try {
-      await fetch(`${API_BASE_URL}/api/simulator/mode?mode=${mode}`, { method: 'POST' });
+      const resp = await fetch(`${API_BASE_URL}/api/simulator/mode?mode=${mode}`, { method: 'POST' });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.status === 'blocked') {
+          setHardwareActive(true);
+        }
+      }
     } catch (e) {}
   };
 
   const handleTriggerFall = () => {
+    if (hardwareActive) return;
     setIsSosModalOpen(true);
     audioAlarm.playSiren();
   };
@@ -560,6 +568,7 @@ export function App() {
           currentMode={simulatorMode}
           onSetMode={handleSetSimulatorMode}
           onTriggerFall={handleTriggerFall}
+          hardwareActive={hardwareActive}
           lang={lang}
           t={t}
         />

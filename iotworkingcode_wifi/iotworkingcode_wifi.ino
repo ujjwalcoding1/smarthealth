@@ -27,7 +27,7 @@
 const char* WIFI_SSID = "Ujjwal Mehta";
 const char* WIFI_PASSWORD = "Ujjwal@1856";
 
-// Target Backend URL (Render URL or Local IP: e.g. "http://10.25.212.245:8000")
+// Target Backend URL (Render URL ya Local IP: e.g. "http://10.25.212.245:8000")
 const char* SERVER_URL = "http://10.25.212.245:8000";
 
 // =====================================================
@@ -354,7 +354,7 @@ void loop() {
                 bpm = instantBpm;
               } else {
                 // Moving average filter for stable physiological heart rate
-                bpm = 0.7f * bpm + 0.3f * newBpm_calc(instantBpm);
+                bpm = 0.7f * bpm + 0.3f * instantBpm;
               }
             }
           }
@@ -518,9 +518,4 @@ void loop() {
 
   // Short 10ms loop delay keeps sensor sampling fast and responsive
   delay(10);
-}
-
-// Helper calculation function for BPM
-inline float newBpm_calc(float val) {
-  return val;
 }

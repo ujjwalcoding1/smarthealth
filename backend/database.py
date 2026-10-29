@@ -350,7 +350,7 @@ db = None
 
 try:
     from pymongo import MongoClient
-    mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=2000)
+    mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=1000, connectTimeoutMS=1000)
     mongo_client.server_info()
     db = mongo_client[DB_NAME]
     print(f"Connected successfully to MongoDB at {MONGODB_URI}")
