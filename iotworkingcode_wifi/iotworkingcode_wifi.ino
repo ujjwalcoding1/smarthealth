@@ -24,11 +24,11 @@
 // =====================================================
 // WIFI & BACKEND CONFIGURATION
 // =====================================================
-const char* WIFI_SSID = "Ujjwal Mehta";
-const char* WIFI_PASSWORD = "Ujjwal@1856";
+const char* WIFI_SSID = "ujjwal sharma";
+const char* WIFI_PASSWORD = "12345678";
 
 // Target Backend URL (Render URL ya Local IP: e.g. "http://10.25.212.245:8000")
-const char* SERVER_URL = "http://10.25.212.245:8000";
+const char* SERVER_URL = "http://172.28.28.245:8000";
 
 // =====================================================
 // PIN CONFIGURATION
@@ -191,14 +191,19 @@ bool readMPU(float &ax, float &ay, float &az) {
 // =====================================================
 void sendTelemetryToCloud() {
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ [CLOUD] WiFi not connected! Reconnecting to " + String(WIFI_SSID) + "...");
+    WiFi.reconnect();
     return;
   }
 
   HTTPClient http;
-  http.setTimeout(800); // 800ms timeout prevents loop starvation
+  http.setTimeout(1500); // 1500ms timeout prevents loop starvation while ensuring delivery
   String url = String(SERVER_URL) + "/api/iot/telemetry";
 
-  if (!http.begin(url)) return;
+  if (!http.begin(url)) {
+    Serial.println("❌ [CLOUD] Failed to begin HTTP connection to: " + url);
+    return;
+  }
   http.addHeader("Content-Type", "application/json");
 
   // Calculate real SpO2 approximation from real Red/IR ratio
@@ -236,13 +241,21 @@ void sendTelemetryToCloud() {
   jsonPayload += "\"gps_valid\":" + String(gps.location.isValid() ? "true" : "false");
   jsonPayload += "}";
 
-  http.POST(jsonPayload);
+  int httpCode = http.POST(jsonPayload);
+  if (httpCode == 200) {
+    Serial.println("📡 [CLOUD LIVE] Telemetry delivered to Web App! (HTTP 200 OK)");
+  } else if (httpCode > 0) {
+    Serial.printf("⚠️ [CLOUD WARNING] Server responded with HTTP %d\n", httpCode);
+  } else {
+    Serial.printf("❌ [CLOUD ERROR] HTTP POST failed (code %d: %s). Check if backend is running on %s\n", 
+                  httpCode, http.errorToString(httpCode).c_str(), SERVER_URL);
+  }
   http.end();
 
   // Instant Emergency SOS trigger if fall detected
   if (impactDetected) {
     HTTPClient sosHttp;
-    sosHttp.setTimeout(1000);
+    sosHttp.setTimeout(1500);
     String sosUrl = String(SERVER_URL) + "/api/sos/trigger";
     if (sosHttp.begin(sosUrl)) {
       sosHttp.addHeader("Content-Type", "application/json");
@@ -253,7 +266,8 @@ void sendTelemetryToCloud() {
       sosJson += "\"acceleration_g\":" + String(accelerationG, 2) + ",";
       sosJson += "\"latitude\":" + String(lat, 6) + ",";
       sosJson += "\"longitude\":" + String(lng, 6) + "}";
-      sosHttp.POST(sosJson);
+      int sosCode = sosHttp.POST(sosJson);
+      Serial.printf("🚨 [SOS CLOUD] Emergency alert dispatched (HTTP %d)\n", sosCode);
       sosHttp.end();
     }
   }
@@ -506,11 +520,15 @@ void loop() {
     // WiFi Cloud Status
     Serial.print("WiFi Cloud Status: ");
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.print("CONNECTED (IP: ");
+      Serial.print("CONNECTED (ESP32 IP: ");
       Serial.print(WiFi.localIP().toString());
-      Serial.println(") -> Telemetry Stream Active");
+      Serial.print(" | Target Backend: ");
+      Serial.print(SERVER_URL);
+      Serial.println(")");
     } else {
-      Serial.println("DISCONNECTED / RECONNECTING");
+      Serial.print("DISCONNECTED (Attempting to connect to SSID: '");
+      Serial.print(WIFI_SSID);
+      Serial.println("')");
     }
 
     Serial.println("============================================");

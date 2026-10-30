@@ -178,14 +178,23 @@ async def ingest_iot_telemetry(data: TelemetryPayload):
     payload = TelemetryPayload(**latest_telemetry_dict)
     latest_zone_evaluation = evaluate_vitals_zone(payload)
 
-    db.save_telemetry(raw_dict)
-    await manager.broadcast({
-        "type": "TELEMETRY_UPDATE",
-        "telemetry": raw_dict,
-        "zone_evaluation": latest_zone_evaluation.dict(),
-        "hardware_active": True,
-        "simulation_active": False
-    })
+    print(f"📥 [ESP32 LIVE TELEMETRY] Pulse: {payload.heart_rate:.1f} BPM | SpO2: {payload.spo2:.1f}% | Temp: {payload.temperature_c:.2f}°C | Fall: {payload.impact_detected} | Zone: {latest_zone_evaluation.zone}")
+
+    try:
+        db.save_telemetry(raw_dict)
+    except Exception as e:
+        print(f"Warning: db.save_telemetry error: {e}")
+
+    try:
+        await manager.broadcast({
+            "type": "TELEMETRY_UPDATE",
+            "telemetry": raw_dict,
+            "zone_evaluation": latest_zone_evaluation.dict(),
+            "hardware_active": True,
+            "simulation_active": False
+        })
+    except Exception as e:
+        print(f"Warning: WebSocket broadcast error: {e}")
 
     return {
         "status": "received",
@@ -424,10 +433,14 @@ def chatbot_prescribe(query: SymptomQuery):
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):
     await manager.connect(websocket)
+    now = time.time()
+    hw_active = (now - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS
     await websocket.send_text(json.dumps({
         "type": "INITIAL_SNAPSHOT",
         "telemetry": latest_telemetry_dict,
-        "zone_evaluation": latest_zone_evaluation.dict()
+        "zone_evaluation": latest_zone_evaluation.dict(),
+        "hardware_active": hw_active,
+        "simulation_active": not hw_active
     }))
     try:
         while True:
