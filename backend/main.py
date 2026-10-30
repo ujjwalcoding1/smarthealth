@@ -240,6 +240,15 @@ def get_sos_settings():
 def update_sos_settings(config: SOSConfig):
     return db.update_sos_config(config.dict())
 
+# 2b. Caregiver Remote Watch & Dose Tokens Configuration
+@app.get("/api/caregiver/config")
+def get_caregiver_settings():
+    return db.get_caregiver_config()
+
+@app.post("/api/caregiver/config")
+def update_caregiver_settings(config: Dict[str, Any]):
+    return db.update_caregiver_config(config)
+
 @app.post("/api/sos/trigger")
 async def trigger_emergency_sos(incident: Dict[str, Any]):
     cfg = db.get_sos_config()

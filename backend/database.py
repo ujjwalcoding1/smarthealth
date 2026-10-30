@@ -4,6 +4,7 @@ import json
 import uuid
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+from medicines_catalog import COMPREHENSIVE_MEDICINES
 
 load_dotenv()
 
@@ -12,7 +13,7 @@ DB_NAME = os.getenv("DB_NAME", "smarthealth")
 
 class FallbackStore:
     def __init__(self):
-        self.data: Dict[str, List[Dict[str, Any]]] = {
+        self.data: Dict[str, Any] = {
             "telemetry": [],
             "alerts": [],
             "sos_config": {
@@ -25,6 +26,17 @@ class FallbackStore:
                 "auto_dial_delay_seconds": 10,
                 "enable_sms_alert": True,
                 "custom_message": "EMERGENCY: Patient fell or requires urgent medical attention!"
+            },
+            "caregiver_config": {
+                "caregiver_name": "Ananya (Daughter)",
+                "email": "guardian.care@smarthealth.org",
+                "relationship": "Primary Guardian",
+                "phone": "+919811223344",
+                "dose_tokens": [
+                    { "id": "TKN-101", "med_name": "Dolo 650mg", "dosage": "1 tab", "time": "08:30 AM", "meal": "After Food", "taken": True },
+                    { "id": "TKN-102", "med_name": "Telma 40mg", "dosage": "1 tab", "time": "01:30 PM", "meal": "After Lunch", "taken": False },
+                    { "id": "TKN-103", "med_name": "Atorva 10mg", "dosage": "1 tab", "time": "09:00 PM", "meal": "At Bedtime", "taken": False }
+                ]
             },
             "doctors": [
                 {
@@ -152,106 +164,7 @@ class FallbackStore:
                     "rating": 4.85
                 }
             ],
-            "medicines": [
-                {
-                    "id": "med1",
-                    "brand_name": "Dolo 650 / Calpol",
-                    "generic_name": "Paracetamol (Acetaminophen) 650mg",
-                    "category": "Fever & Pain Relief",
-                    "illness_treated": "High Fever, Body Ache, Headache, Flu Symptoms (Yellow Zone)",
-                    "dosage_adult": "1 tablet (650mg) after food",
-                    "frequency": "Every 6-8 hours as needed (Max 3/day)",
-                    "meal_instruction": "Strictly after food with full glass of water",
-                    "precautions": "Do not exceed 3000mg per 24 hours. Avoid alcohol. Caution in severe liver disease.",
-                    "side_effects": "Rare: mild nausea or skin rash. Generally well-tolerated.",
-                    "prescription_required": False,
-                    "price_inr": 32.0
-                },
-                {
-                    "id": "med2",
-                    "brand_name": "Electral / W.H.O ORS",
-                    "generic_name": "Oral Rehydration Salts (Dextrose, Sodium Chloride, Potassium Chloride)",
-                    "category": "Hydration & Electrolytes",
-                    "illness_treated": "Dehydration, Resting Tachycardia (High Heart Rate), Diarrhea, Heat Stroke",
-                    "dosage_adult": "1 sachet reconstituted in 1 liter clean drinking water",
-                    "frequency": "Sip regularly throughout the day",
-                    "meal_instruction": "Any time, sip slowly",
-                    "precautions": "Consume prepared solution within 24 hours. Do not boil prepared solution.",
-                    "side_effects": "None when diluted properly.",
-                    "prescription_required": False,
-                    "price_inr": 22.0
-                },
-                {
-                    "id": "med3",
-                    "brand_name": "Pan-D / Pantocid DSR",
-                    "generic_name": "Pantoprazole 40mg + Domperidone 30mg",
-                    "category": "Acidity, GERD & Nausea",
-                    "illness_treated": "Severe Acidity, Heartburn, Acid Reflux, Gastric Nausea",
-                    "dosage_adult": "1 capsule once daily in morning",
-                    "frequency": "Once a day for 5-7 days",
-                    "meal_instruction": "30 to 45 minutes BEFORE breakfast with water",
-                    "precautions": "Do not crush or chew capsule. Consult doctor if symptoms persist over 14 days.",
-                    "side_effects": "Mild headache, dry mouth, dizziness.",
-                    "prescription_required": True,
-                    "price_inr": 185.0
-                },
-                {
-                    "id": "med4",
-                    "brand_name": "Metolar-XR / Betaloc",
-                    "generic_name": "Metoprolol Succinate Extended Release 25mg / 50mg",
-                    "category": "Cardiac & Blood Pressure",
-                    "illness_treated": "Hypertension (High BP), Angina, Tachycardia Arrhythmia, Post-MI Care",
-                    "dosage_adult": "25mg once daily",
-                    "frequency": "Every morning at the same hour",
-                    "meal_instruction": "Immediately after breakfast",
-                    "precautions": "Never discontinue abruptly. Monitor resting pulse. Contraindicated in severe asthma.",
-                    "side_effects": "Fatigue, slow heartbeat (bradycardia), cold hands.",
-                    "prescription_required": True,
-                    "price_inr": 140.0
-                },
-                {
-                    "id": "med5",
-                    "brand_name": "Augmentin 625 Duo",
-                    "generic_name": "Amoxicillin 500mg + Clavulanic Acid 125mg",
-                    "category": "Antibiotic (Broad Spectrum)",
-                    "illness_treated": "Bacterial Chest Infection, Severe Bronchitis, Sinusitis, Dental Abscess, Skin Infection",
-                    "dosage_adult": "1 tablet twice daily",
-                    "frequency": "Twice daily after meals for complete 5-day course",
-                    "meal_instruction": "At start of a meal to reduce GI discomfort",
-                    "precautions": "Do not skip doses. Complete the full antibiotic course. Contraindicated in penicillin allergy.",
-                    "side_effects": "Mild diarrhea, loose stools, nausea.",
-                    "prescription_required": True,
-                    "price_inr": 210.0
-                },
-                {
-                    "id": "med6",
-                    "brand_name": "Cetrizine / Okacet",
-                    "generic_name": "Cetirizine Hydrochloride 10mg",
-                    "category": "Antihistamine & Allergy",
-                    "illness_treated": "Runny Nose, Allergic Rhinitis, Sneezing, Skin Itching & Hives",
-                    "dosage_adult": "1 tablet (10mg) at night",
-                    "frequency": "Once daily at bedtime",
-                    "meal_instruction": "With or without food",
-                    "precautions": "May cause mild drowsiness. Avoid driving or heavy machinery after consumption.",
-                    "side_effects": "Sleepiness, dry mouth.",
-                    "prescription_required": False,
-                    "price_inr": 28.0
-                },
-                {
-                    "id": "med7",
-                    "brand_name": "Glycomet-GP 1 / Glycomet 500",
-                    "generic_name": "Metformin Hydrochloride 500mg",
-                    "category": "Diabetes Management",
-                    "illness_treated": "Type 2 Diabetes Mellitus, Insulin Resistance",
-                    "dosage_adult": "500mg twice daily with meals",
-                    "frequency": "With breakfast and dinner",
-                    "meal_instruction": "Take with meals to minimize stomach upset",
-                    "precautions": "Monitor fasting blood glucose and HbA1c regularly. Maintain adequate kidney function.",
-                    "side_effects": "Abdominal discomfort, metallic taste.",
-                    "prescription_required": True,
-                    "price_inr": 65.0
-                }
-            ],
+            "medicines": [dict(m) for m in COMPREHENSIVE_MEDICINES],
             "gov_schemes": [
                 {
                     "id": "gov1",
@@ -560,3 +473,26 @@ def get_consultations() -> List[Dict[str, Any]]:
         except Exception:
             pass
     return store.find("consultations", limit=100)
+
+# Caregiver Remote Watch & Dose Tokens Configuration
+def get_caregiver_config() -> Dict[str, Any]:
+    if db is not None:
+        try:
+            cfg = db.caregiver_config.find_one({}, {"_id": 0})
+            if cfg:
+                return cfg
+        except Exception:
+            pass
+    return store.data.get("caregiver_config", {})
+
+def update_caregiver_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    if "caregiver_config" not in store.data:
+        store.data["caregiver_config"] = {}
+    store.data["caregiver_config"].update(config)
+    if db is not None:
+        try:
+            db.caregiver_config.update_one({}, {"$set": config}, upsert=True)
+        except Exception:
+            pass
+    return store.data["caregiver_config"]
+

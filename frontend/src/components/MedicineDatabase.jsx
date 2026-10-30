@@ -5,7 +5,19 @@ export function MedicineDatabase({ medicines, lang }) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
 
-  const categories = ['ALL', 'Fever & Pain', 'Antibiotic', 'Cardiac', 'Acidity', 'Allergy', 'Diabetes'];
+  const categories = [
+    'ALL',
+    'Fever & Pain',
+    'Cardiac & BP',
+    'Diabetes',
+    'Antibiotic & Infection',
+    'Digestive & Acidity',
+    'Respiratory & Cough',
+    'Allergy & Skin',
+    'Vitamins & Minerals',
+    'Kidney & Urinary',
+    'Hormones & Thyroid'
+  ];
 
   const filtered = medicines?.filter(med => {
     const matchesSearch = med.brand_name.toLowerCase().includes(search.toLowerCase()) ||

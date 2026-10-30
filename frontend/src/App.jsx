@@ -30,6 +30,7 @@ import { BmiCalculator } from './components/BmiCalculator';
 import { ExportReport } from './components/ExportReport';
 import { AlertsLog } from './components/AlertsLog';
 import { GuardianView } from './components/GuardianView';
+import { DEFAULT_MEDICINES } from './data/defaultMedicines';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
@@ -39,6 +40,25 @@ export function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState('vitals'); // 'vitals', 'doctors', 'hospitals', 'medicines', 'gov', 'chatbot', 'admin'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Caregiver Remote Watch & Dose Tokens Configuration
+  const [caregiverConfig, setCaregiverConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smarthealth_caregiver_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      caregiver_name: "Ananya (Daughter)",
+      email: "guardian.care@smarthealth.org",
+      relationship: "Primary Guardian",
+      phone: "+919811223344",
+      dose_tokens: [
+        { id: "TKN-101", med_name: "Dolo 650mg", dosage: "1 tab", time: "08:30 AM", meal: "After Food", taken: true },
+        { id: "TKN-102", med_name: "Telma 40mg", dosage: "1 tab", time: "01:30 PM", meal: "After Lunch", taken: false },
+        { id: "TKN-103", med_name: "Atorva 10mg", dosage: "1 tab", time: "09:00 PM", meal: "At Bedtime", taken: false }
+      ]
+    };
+  });
 
   // Live IoT Telemetry State
   const [telemetry, setTelemetry] = useState({
@@ -78,7 +98,7 @@ export function App() {
   // Real Database Collections
   const [doctors, setDoctors] = useState([]);
   const [hospitals, setHospitals] = useState([]);
-  const [medicines, setMedicines] = useState([]);
+  const [medicines, setMedicines] = useState(DEFAULT_MEDICINES);
   const [govSchemes, setGovSchemes] = useState([]);
   const [sosConfig, setSosConfig] = useState({
     primary_sos_number: "112",
@@ -116,6 +136,7 @@ export function App() {
   useEffect(() => {
     fetchLatestVitals();
     fetchSOSConfig();
+    fetchCaregiverConfig();
     fetchDoctors();
     fetchHospitals();
     fetchMedicines();
@@ -226,7 +247,39 @@ export function App() {
   const fetchMedicines = async () => {
     try {
       const resp = await fetch(`${API_BASE_URL}/api/medicines`);
-      if (resp.ok) setMedicines(await resp.json());
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setMedicines(data);
+          return;
+        }
+      }
+    } catch (e) {}
+    setMedicines(DEFAULT_MEDICINES);
+  };
+
+  const fetchCaregiverConfig = async () => {
+    try {
+      const resp = await fetch(`${API_BASE_URL}/api/caregiver/config`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.email) {
+          setCaregiverConfig(data);
+          localStorage.setItem('smarthealth_caregiver_config', JSON.stringify(data));
+        }
+      }
+    } catch (e) {}
+  };
+
+  const handleUpdateCaregiverConfig = async (newConfig) => {
+    setCaregiverConfig(newConfig);
+    try {
+      localStorage.setItem('smarthealth_caregiver_config', JSON.stringify(newConfig));
+      await fetch(`${API_BASE_URL}/api/caregiver/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
     } catch (e) {}
   };
 
@@ -303,13 +356,15 @@ export function App() {
 
   // Admin CRUD hooks
   const handleAddDoctor = async (doc) => {
+    const optimisticDoc = { ...doc, id: doc.id || `doc-${Date.now()}` };
+    setDoctors(prev => [...prev, optimisticDoc]);
     try {
       const resp = await fetch(`${API_BASE_URL}/api/doctors`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc)
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(optimisticDoc)
       });
       if (resp.ok) {
         const saved = await resp.json();
-        setDoctors(prev => [...prev, saved]);
+        setDoctors(prev => prev.map(d => d.id === optimisticDoc.id ? saved : d));
       }
     } catch (e) {}
   };
@@ -322,13 +377,15 @@ export function App() {
   };
 
   const handleAddHospital = async (hosp) => {
+    const optimisticHosp = { ...hosp, id: hosp.id || `hosp-${Date.now()}` };
+    setHospitals(prev => [...prev, optimisticHosp]);
     try {
       const resp = await fetch(`${API_BASE_URL}/api/hospitals`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hosp)
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(optimisticHosp)
       });
       if (resp.ok) {
         const saved = await resp.json();
-        setHospitals(prev => [...prev, saved]);
+        setHospitals(prev => prev.map(h => h.id === optimisticHosp.id ? saved : h));
       }
     } catch (e) {}
   };
@@ -341,13 +398,15 @@ export function App() {
   };
 
   const handleAddMedicine = async (med) => {
+    const optimisticMed = { ...med, id: med.id || `med-${Date.now()}` };
+    setMedicines(prev => [...prev, optimisticMed]);
     try {
       const resp = await fetch(`${API_BASE_URL}/api/medicines`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(med)
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(optimisticMed)
       });
       if (resp.ok) {
         const saved = await resp.json();
-        setMedicines(prev => [...prev, saved]);
+        setMedicines(prev => prev.map(m => m.id === optimisticMed.id ? saved : m));
       }
     } catch (e) {}
   };
@@ -580,6 +639,7 @@ export function App() {
             <PPGWaveform
               bpm={telemetry.heart_rate}
               zone={zoneEvaluation.zone}
+              telemetry={telemetry}
               t={t}
             />
 
@@ -624,6 +684,7 @@ export function App() {
               telemetry={telemetry}
               zoneEvaluation={zoneEvaluation}
               medicines={medicines}
+              caregiverConfig={caregiverConfig}
               lang={lang}
               t={t}
             />
@@ -680,6 +741,8 @@ export function App() {
             hospitals={hospitals}
             medicines={medicines}
             govSchemes={govSchemes}
+            caregiverConfig={caregiverConfig}
+            onUpdateCaregiverConfig={handleUpdateCaregiverConfig}
             onAddDoctor={handleAddDoctor}
             onDeleteDoctor={handleDeleteDoctor}
             onAddHospital={handleAddHospital}
@@ -688,6 +751,7 @@ export function App() {
             onDeleteMedicine={handleDeleteMedicine}
             onAddGovScheme={handleAddGovScheme}
             apiBaseUrl={API_BASE_URL}
+            lang={lang}
           />
         )}
       </main>

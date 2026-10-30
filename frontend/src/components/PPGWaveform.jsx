@@ -1,16 +1,18 @@
 import React, { useRef, useEffect } from 'react';
-import { Activity, Heart } from 'lucide-react';
+import { Activity, Heart, Radio } from 'lucide-react';
 
-export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }) {
+export function PPGWaveform({ bpm = 0, isSimulated = false, zone = 'GREEN', telemetry, t }) {
   const canvasRef = useRef(null);
   const bpmRef = useRef(bpm);
   const zoneRef = useRef(zone);
+  const telemetryRef = useRef(telemetry);
 
   // Keep refs updated without restarting the animation loop
   useEffect(() => {
-    bpmRef.current = bpm;
+    bpmRef.current = Number(bpm) || 0;
     zoneRef.current = zone;
-  }, [bpm, zone]);
+    telemetryRef.current = telemetry;
+  }, [bpm, zone, telemetry]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -29,47 +31,63 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
     };
     window.addEventListener('resize', handleResize);
 
-    // Pre-populate points with a natural continuous physiological waveform so it's NEVER flat!
-    const points = [];
     const maxPoints = Math.max(100, Math.floor(width / 2.5));
+    const points = [];
     let tVal = 0;
+    let idleNoiseState = 0;
 
+    // Pre-populate with initial points
     for (let i = 0; i < maxPoints; i++) {
-      const p = (i / 30) % 1;
-      let w = 0;
-      if (p < 0.25) {
-        w = Math.sin(p / 0.25 * Math.PI) * 42;
-      } else if (p >= 0.25 && p < 0.45) {
-        w = Math.sin((p - 0.25) / 0.2 * Math.PI) * 16;
-      } else {
-        w = Math.sin(p * Math.PI * 2) * 3;
-      }
-      points.push(height / 2 - w);
+      points.push(height / 2);
     }
 
     const render = () => {
-      const currentBpm = bpmRef.current > 30 ? bpmRef.current : 72;
+      const currentBpm = Number(bpmRef.current) || 0;
       const currentZone = zoneRef.current || 'GREEN';
+      const hasLivePulse = currentBpm > 25;
 
-      // Pulse speed calibrated to BPM
-      const beatFrequency = (currentBpm / 60) * 0.055;
-      tVal += beatFrequency;
+      let y = height / 2;
 
-      // Real PPG pulse synthesis: Systolic peak + dicrotic notch + diastolic baseline
-      const phase = (tVal % 1) * Math.PI * 2;
-      let wave = 0;
+      if (hasLivePulse) {
+        // --- LIVE ARTERIAL PULSE CONTOUR (Synced to real BPM from MAX30102) ---
+        // Cycle frequency directly proportional to measured BPM
+        const beatFrequency = (currentBpm / 60) * 0.052;
+        tVal += beatFrequency;
 
-      if (phase < Math.PI * 0.75) {
-        wave = Math.sin(phase / 0.75 * Math.PI) * 44;
-      } else if (phase >= Math.PI * 0.75 && phase < Math.PI * 1.25) {
-        const dicrotic = (phase - Math.PI * 0.75) / (Math.PI * 0.5) * Math.PI;
-        wave = Math.sin(dicrotic) * 17;
+        const phase = (tVal % 1) * Math.PI * 2;
+        let wave = 0;
+
+        // Systolic upstroke & ejection peak
+        if (phase < Math.PI * 0.70) {
+          wave = Math.sin((phase / 0.70) * Math.PI) * 46;
+        } 
+        // Dicrotic notch and secondary aortic rebound wave
+        else if (phase >= Math.PI * 0.70 && phase < Math.PI * 1.20) {
+          const dicroticPhase = ((phase - Math.PI * 0.70) / (Math.PI * 0.50)) * Math.PI;
+          wave = Math.sin(dicroticPhase) * 18;
+        } 
+        // Diastolic decay run-off
+        else {
+          wave = Math.sin(phase) * 3;
+        }
+
+        // Add subtle physiological sensor micro-jitter
+        const microJitter = (Math.random() - 0.5) * 2.2;
+        y = height / 2 - wave + microJitter;
+
       } else {
-        wave = Math.sin(phase) * 4;
-      }
+        // --- REALISTIC DYNAMIC ZIG-ZAG BASELINE NOISE (When no finger/heart rate detected) ---
+        // Generates active irregular optical baseline drift & zig-zag sensor flutter (never repetitive or flat)
+        tVal += 0.09;
+        idleNoiseState += 0.15;
 
-      const jitter = (Math.random() - 0.5) * 1.5;
-      const y = height / 2 - wave + jitter;
+        // Multi-frequency harmonic wandering + random Brownian zig-zag jumps
+        const wanderingBaseline = Math.sin(tVal * 0.8) * 8 + Math.cos(tVal * 1.9) * 5;
+        const randomZigZag = (Math.random() - 0.5) * 16;
+        const sensorHighFreq = Math.sin(idleNoiseState * 4.2) * 6;
+
+        y = height / 2 + wanderingBaseline + randomZigZag + sensorHighFreq;
+      }
 
       points.push(y);
       while (points.length > maxPoints) {
@@ -79,8 +97,10 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
       // Clear Canvas
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Draw ECG/PPG Background Monitor Grid
-      ctx.strokeStyle = currentZone === 'RED' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.08)';
+      // 1. Draw Medical Monitor Grid
+      ctx.strokeStyle = hasLivePulse
+        ? (currentZone === 'RED' ? 'rgba(239, 68, 68, 0.14)' : 'rgba(16, 185, 129, 0.10)')
+        : 'rgba(245, 158, 11, 0.09)';
       ctx.lineWidth = 1;
       const gridSize = 20;
 
@@ -97,11 +117,14 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
         ctx.stroke();
       }
 
-      // 2. Draw Continuous PPG Waveform Line
+      // 2. Draw Continuous Waveform Line
       ctx.beginPath();
-      const lineColor = currentZone === 'RED' ? '#ef4444' : currentZone === 'YELLOW' ? '#f59e0b' : '#10b981';
+      const lineColor = hasLivePulse
+        ? (currentZone === 'RED' ? '#ef4444' : currentZone === 'YELLOW' ? '#f59e0b' : '#10b981')
+        : '#f59e0b'; // Amber for idle scanning noise
+
       ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = hasLivePulse ? 2.5 : 1.8;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
@@ -116,14 +139,14 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
       }
       ctx.stroke();
 
-      // 3. Glowing Pulse Head Cursor
+      // 3. Glowing Pulse Cursor Head
       const lastX = (points.length - 1) * stepX;
       const lastY = points[points.length - 1];
       ctx.beginPath();
-      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctx.arc(lastX, lastY, hasLivePulse ? 4.5 : 3.5, 0, Math.PI * 2);
       ctx.fillStyle = lineColor;
       ctx.shadowColor = lineColor;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = hasLivePulse ? 12 : 6;
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -136,37 +159,44 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
     };
-  }, []); // Run animation loop continuously without resetting!
+  }, []);
 
-  const effectiveZone = zone || 'GREEN';
+  const hasPulse = Number(bpm) > 25;
 
   return (
-    <div className="health-card mb-6 overflow-hidden">
-      <div className="flex items-center justify-between mb-2">
+    <div className="health-card mb-6">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <Activity className="w-4 h-4" />
+          <div className={`p-1.5 rounded-lg ${hasPulse ? 'bg-emerald-600' : 'bg-amber-500'} text-white shadow-sm`}>
+            {hasPulse ? <Heart className="w-4 h-4 animate-heartbeat" /> : <Radio className="w-4 h-4 animate-pulse" />}
           </div>
-          <span className="font-bold text-sm text-slate-800 dark:text-slate-200">
-            {t?.livePulseWave || 'Real-Time PPG Pulse Waveform (MAX30102)'}
-          </span>
+          <div>
+            <h3 className="font-bold text-sm md:text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>{t?.livePulseWave || 'Real-Time PPG Pulse Waveform (MAX30102)'}</span>
+            </h3>
+            <span className="text-[11px] text-slate-500">
+              {hasPulse 
+                ? `Optical photoplethysmogram synced to ESP32 MAX30102 • ${bpm.toFixed(1)} BPM Live Rhythm` 
+                : 'Optical sensor active • Dynamic baseline zig-zag scanning noise (Place finger on MAX30102)'}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
-          <div className={`flex items-center gap-1 font-mono font-bold ${
-            effectiveZone === 'RED' ? 'text-red-500' : effectiveZone === 'YELLOW' ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'
+        {/* Live Status Pill */}
+        <div className="flex items-center gap-2">
+          <span className={`text-[10.5px] font-mono font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+            hasPulse 
+              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800'
           }`}>
-            <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 animate-heartbeat" />
-            <span>{bpm > 0 ? `${Number(bpm).toFixed(1)} BPM` : 'Detecting pulse...'}</span>
-          </div>
-          <span className="bg-slate-100 dark:bg-slate-800 text-[10px] px-2 py-0.5 rounded text-slate-500 font-mono">
-            MAX30102 100Hz Bus
+            <span className={`w-2 h-2 rounded-full ${hasPulse ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`}></span>
+            <span>{hasPulse ? `Pulse Locked: ${bpm.toFixed(1)} BPM` : 'Scanning / Zig-Zag Baseline'}</span>
           </span>
         </div>
       </div>
 
-      <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner">
-        <canvas ref={canvasRef} className="w-full h-[130px] block" />
+      <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-slate-800/80 p-2 shadow-inner">
+        <canvas ref={canvasRef} className="w-full block" />
       </div>
     </div>
   );
