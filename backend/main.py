@@ -426,7 +426,7 @@ def chatbot_prescribe(query: SymptomQuery):
         "temperature_c": query.current_temp or latest_telemetry_dict.get("temperature_c", 36.8),
         "spo2": query.current_spo2 or latest_telemetry_dict.get("spo2", 98)
     }
-    result = analyze_and_prescribe(query.symptom_text, vitals)
+    result = analyze_and_prescribe(query.symptom_text, vitals, api_key=query.api_key, lang=query.lang or "en")
     return result
 
 # 9. Real-time WebSocket
