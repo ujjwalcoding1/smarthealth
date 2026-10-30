@@ -157,7 +157,7 @@ export function PPGWaveform({ bpm = 74, isSimulated = false, zone = 'GREEN', t }
             effectiveZone === 'RED' ? 'text-red-500' : effectiveZone === 'YELLOW' ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'
           }`}>
             <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500 animate-heartbeat" />
-            <span>{bpm ? Number(bpm).toFixed(1) : '72.0'} BPM</span>
+            <span>{bpm > 0 ? `${Number(bpm).toFixed(1)} BPM` : 'Detecting pulse...'}</span>
           </div>
           <span className="bg-slate-100 dark:bg-slate-800 text-[10px] px-2 py-0.5 rounded text-slate-500 font-mono">
             MAX30102 100Hz Bus
