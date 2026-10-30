@@ -345,10 +345,14 @@ def call_openai_gpt(query_text: str, vitals: Dict[str, Any], lang: str, api_key:
         "The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 temperature sensor, MPU6050 accelerometer, NEO-6M GPS). "
         "Evaluate the user's symptoms, question, and current vitals. "
         "Provide clinical triage, prescribe accurate, evidence-based medicines (OTC or clinical guidance) with precise dosage, administration instructions, and safety warnings. "
-        f"Answer in the requested language ({'Hindi' if lang == 'hi' else 'English'}). "
+        f"Answer in the requested language ({'Hindi' if lang == 'hi' else 'English'}).\n"
+        "CRITICAL GREETING INSTRUCTION: If user says 'hello', 'hi', 'hey', 'namaste', 'good morning', 'how are you', etc., "
+        "reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). "
+        "Set 'is_greeting': true, 'condition_diagnosed': 'Conversational Greeting', and 'prescribed_medicines': [] (EMPTY ARRAY — NEVER prescribe medicine for a greeting!).\n"
         "You MUST return ONLY valid JSON matching this exact structure without markdown fences or extra commentary:\n"
         "{\n"
         '  "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",\n'
+        '  "is_greeting": true | false,\n'
         '  "condition_diagnosed": "Short Title of Diagnosed Condition / Query Topic",\n'
         '  "clinical_assessment": "Comprehensive, accurate, friendly medical explanation answering the question thoroughly and evaluating current vitals",\n'
         '  "prescribed_medicines": [\n'
@@ -447,6 +451,37 @@ def analyze_and_prescribe(
     hr = vitals.get("heart_rate", 75)
     temp = vitals.get("temperature_c", 36.8)
     spo2 = vitals.get("spo2", 98)
+
+    # 0. Polite Greeting & Small-Talk Interceptor (Zero Medicine Response)
+    disease_check_keywords = [
+        "fever", "bukhar", "temp", "cough", "khansi", "cold", "sardi", "jukham",
+        "acidity", "gas", "headache", "sar dard", "sir dard", "bp", "sugar", "diabetes",
+        "diarrhea", "loose motion", "dast", "pain", "dard", "vomit", "ulti", "asthma", "allergy",
+        "chest", "seene", "heart", "breath", "saans", "medicine", "dawa", "tablet"
+    ]
+    has_disease_mention = any(k in text for k in disease_check_keywords)
+
+    greeting_pattern = r"^(?:hello|hi|hey|hlo|helo|hy|namaste|namaskar|pranam|good\s+(?:morning|evening|afternoon|night)|how\s+are\s+you|kaise\s+ho|who\s+are\s+you|thank\s+you|thanks|ok|okay|bye|goodbye)\b"
+    if not has_disease_mention and re.search(greeting_pattern, text):
+        return {
+            "urgency": "NORMAL",
+            "is_greeting": True,
+            "condition_diagnosed": "Conversational Greeting",
+            "clinical_assessment": (
+                "नमस्ते सर! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। मैं आज आपकी क्या सहायता कर सकता हूँ? "
+                "आप किसी भी बीमारी के लक्षण, आवश्यक दवाइयाँ, सही खुराक या अपने लाइव सेंसर वाइटल्स के बारे में बेझिझक पूछ सकते हैं।"
+                if lang == "hi" else
+                "Hello Sir! How can I assist you with your health today? I am your SmartHealth AI Clinical Consultant. "
+                "Please feel free to describe any symptoms you are experiencing, ask about medicines and dosages, or inquire about your live vitals."
+            ),
+            "prescribed_medicines": [],
+            "dietary_lifestyle": [],
+            "red_flags": "",
+            "emergency_actions": [],
+            "source": "SmartHealth AI Assistant",
+            "api_connected": True,
+            "vitals_considered": {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
+        }
 
     # 1. Emergency Crisis Rule Interceptor (Zero Latency Protection)
     if any(k in text for k in ["chest pain", "seene me dard", "heart attack", "unconscious", "choking", "breathless", "sans lene me takleef", "collapsed"]):

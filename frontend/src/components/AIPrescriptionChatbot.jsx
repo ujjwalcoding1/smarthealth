@@ -89,9 +89,11 @@ The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 t
 Evaluate the user's symptoms, question, and current vitals: Heart Rate: ${hr} BPM, Body Temp: ${temp}°C, SpO2: ${spo2}%.
 Provide clinical triage, prescribe accurate, evidence-based medicines (OTC or clinical guidance) with precise dosage, administration instructions, and safety warnings.
 Answer in the requested language (${lang === 'hi' ? 'Hindi' : 'English'}).
+CRITICAL GREETING INSTRUCTION: If user says 'hello', 'hi', 'hey', 'namaste', 'good morning', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true, 'condition_diagnosed': 'Conversational Greeting', and 'prescribed_medicines': [] (EMPTY ARRAY — NEVER prescribe medicine for a greeting!).
 You MUST return ONLY valid JSON matching this exact structure without markdown code blocks:
 {
   "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",
+  "is_greeting": true,
   "condition_diagnosed": "Short Title of Diagnosed Condition / Query Topic",
   "clinical_assessment": "Comprehensive, accurate, friendly medical explanation answering the question thoroughly and evaluating current vitals",
   "prescribed_medicines": [
@@ -141,6 +143,20 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     return parsed;
   };
 
+  const isGreetingQuery = (txt) => {
+    if (!txt) return false;
+    const clean = txt.toLowerCase().trim();
+    const diseaseWords = [
+      'fever', 'bukhar', 'temp', 'cough', 'khansi', 'cold', 'sardi', 'jukham',
+      'acidity', 'gas', 'headache', 'sar dard', 'sir dard', 'bp', 'sugar', 'diabetes',
+      'diarrhea', 'loose motion', 'dast', 'pain', 'dard', 'vomit', 'ulti', 'asthma', 'allergy',
+      'chest', 'seene', 'heart', 'breath', 'saans', 'medicine', 'dawa', 'tablet', 'symptom'
+    ];
+    if (diseaseWords.some(w => clean.includes(w))) return false;
+    const greetingRegex = /^(?:hello|hi|hey|hlo|helo|hy|namaste|namaskar|pranam|good\s+(?:morning|evening|afternoon|night)|how\s+are\s+you|kaise\s+ho|who\s+are\s+you|thank\s+you|thanks|ok|okay|bye|goodbye)\b/i;
+    return greetingRegex.test(clean);
+  };
+
   const handleSend = async (e) => {
     e?.preventDefault();
     if (!input.trim() || loading) return;
@@ -148,6 +164,29 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     const userText = input.trim();
     setInput('');
     setMessages(prev => [...prev, { sender: 'user', text: userText }]);
+
+    // Instant polite doctor greeting response if user just said hello/hi/etc.
+    if (isGreetingQuery(userText)) {
+      const greetingResponse = {
+        is_greeting: true,
+        condition_diagnosed: "Conversational Greeting",
+        clinical_assessment: lang === 'hi'
+          ? "नमस्ते सर! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। मैं आज आपकी सेहत में कैसे सहायता कर सकता हूँ? आप किसी भी बीमारी के लक्षण, आवश्यक दवाइयाँ, सही खुराक या अपने लाइव सेंसर वाइटल्स के बारे में बेझिझक पूछ सकते हैं।"
+          : "Hello Sir! How can I assist you with your health today? I am your SmartHealth AI Clinical Consultant. Please feel free to describe any symptoms you are experiencing, ask about medicines and dosages, or inquire about your live vitals.",
+        prescribed_medicines: [],
+        dietary_lifestyle: [],
+        red_flags: ""
+      };
+
+      setMessages(prev => [...prev, {
+        sender: 'ai',
+        structured: greetingResponse,
+        text: greetingResponse.clinical_assessment,
+        source: "SmartHealth AI Assistant"
+      }]);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -334,8 +373,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
                 </div>
               )}
 
-              {/* Structured Clinical Diagnosis Card */}
-              {msg.structured && (
+              {/* Structured Clinical Diagnosis Card (Shown only for health queries, not greetings) */}
+              {msg.structured && !msg.structured.is_greeting && msg.structured.condition_diagnosed !== 'Conversational Greeting' && (msg.structured.prescribed_medicines?.length > 0 || msg.structured.dietary_lifestyle?.length > 0 || msg.structured.red_flags) && (
                 <div className="space-y-3 mt-2.5 pt-2.5 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <span className="font-extrabold text-indigo-700 dark:text-indigo-400 text-xs sm:text-sm">
