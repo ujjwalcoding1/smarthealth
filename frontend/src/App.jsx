@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Heart, Activity, Thermometer, ShieldAlert, PhoneCall, Globe, Moon, Sun, 
   Building2, UserCheck, Pill, Settings, ShieldCheck, Bot, Calendar, Sparkles, 
-  Menu, X, MessageSquare, AlertTriangle, CheckCircle2, ChevronRight
+  Menu, X, MessageSquare, AlertTriangle, CheckCircle2, ChevronRight, Server, Wifi
 } from 'lucide-react';
 
 import { translations } from './utils/translations';
@@ -32,14 +32,26 @@ import { AlertsLog } from './components/AlertsLog';
 import { GuardianView } from './components/GuardianView';
 import { DEFAULT_MEDICINES } from './data/defaultMedicines';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws');
+// Dynamic Backend Server URL (Localhost, Local LAN IP or Cloud Render)
+const getInitialApiBase = () => {
+  try {
+    const saved = localStorage.getItem('smarthealth_backend_url');
+    if (saved && saved.trim()) return saved.trim();
+  } catch (e) {}
+  return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+};
 
 export function App() {
+  const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBase);
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState(getInitialApiBase);
   const [lang, setLang] = useState('en');
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState('vitals'); // 'vitals', 'doctors', 'hospitals', 'medicines', 'gov', 'chatbot', 'admin'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const API_BASE_URL = apiBaseUrl;
+  const WS_BASE_URL = apiBaseUrl.replace(/^http/, 'ws');
 
   // Caregiver Remote Watch & Dose Tokens Configuration
   const [caregiverConfig, setCaregiverConfig] = useState(() => {
@@ -451,10 +463,18 @@ export function App() {
                 <h1 className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-slate-100">
                   SmartHealth
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] font-mono px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => {
+                    setServerUrlInput(apiBaseUrl);
+                    setShowServerModal(true);
+                  }}
+                  title={lang === 'hi' ? 'बैकएंड सर्वर IP या क्लाउड URL बदलने के लिए क्लिक करें' : 'Click to configure Backend Server IP / Cloud URL'}
+                  className="hidden sm:inline-flex items-center gap-1.5 text-[10.5px] font-mono px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                >
                   <span className={`w-2 h-2 rounded-full ${hardwareActive ? 'bg-emerald-500 animate-pulse' : isConnected ? 'bg-sky-500' : 'bg-amber-500'}`}></span>
                   <span>{hardwareActive ? 'ESP32 Hardware Online' : isConnected ? 'ESP32 Ready (Standby)' : 'Connecting...'}</span>
-                </span>
+                  <Server className="w-3 h-3 text-slate-400 ml-0.5" />
+                </button>
               </div>
               <p className="hidden md:block text-[11px] text-slate-500">
                 IoT Patient Lifeline & Health Administration Hub
@@ -606,10 +626,12 @@ export function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {/* 1. Core Tri-Zone Health Banner (GREEN / YELLOW / RED) */}
+        {/* 1. Core Tri-Zone Health Banner (GREEN / YELLOW / RED / STANDBY) */}
         <TriZoneBanner
           evaluation={zoneEvaluation}
           telemetry={telemetry}
+          hardwareActive={hardwareActive}
+          isSimulated={!hardwareActive && simulatorMode !== 'NORMAL'}
           onOpenSOS={() => setIsSosModalOpen(true)}
           lang={lang}
           t={t}
@@ -652,6 +674,8 @@ export function App() {
             <VitalsGauges
               telemetry={telemetry}
               zoneEvaluation={zoneEvaluation}
+              hardwareActive={hardwareActive}
+              isSimulated={!hardwareActive && simulatorMode !== 'NORMAL'}
               lang={lang}
               t={t}
             />
@@ -794,6 +818,97 @@ export function App() {
         lang={lang}
         t={t}
       />
+
+      {/* Backend Server Connection Settings Modal */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl text-xs">
+            <button
+              onClick={() => setShowServerModal(false)}
+              className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+              <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-md">
+                <Server className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  {lang === 'hi' ? 'बैकएंड सर्वर कनेक्शन सेटिंग्स' : 'Backend Server Connection'}
+                </h3>
+                <p className="text-slate-500 text-[11px]">
+                  {lang === 'hi' ? 'स्थानीय लैपटॉप IP या क्लाउड बैकएंड URL सेट करें' : 'Set Local LAN IP or Render Cloud backend URL'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  {lang === 'hi' ? 'सर्वर API URL:' : 'Backend API URL:'}
+                </label>
+                <input
+                  type="text"
+                  value={serverUrlInput}
+                  onChange={(e) => setServerUrlInput(e.target.value)}
+                  placeholder="e.g. http://10.103.4.215:8000 or https://smarthealth.onrender.com"
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="mt-1 text-[10.5px] text-slate-500">
+                  {lang === 'hi'
+                    ? 'वर्तमान लैपटॉप Wi-Fi IP: http://10.103.4.215:8000'
+                    : 'Current Laptop Wi-Fi IP: http://10.103.4.215:8000'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultUrl = 'http://localhost:8000';
+                    setServerUrlInput(defaultUrl);
+                    localStorage.setItem('smarthealth_backend_url', defaultUrl);
+                    setApiBaseUrl(defaultUrl);
+                    setShowServerModal(false);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold"
+                >
+                  {lang === 'hi' ? 'लोकलहोस्ट (Default)' : 'Reset Localhost'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentLan = 'http://10.103.4.215:8000';
+                    setServerUrlInput(currentLan);
+                    localStorage.setItem('smarthealth_backend_url', currentLan);
+                    setApiBaseUrl(currentLan);
+                    setShowServerModal(false);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800"
+                >
+                  Use 10.103.4.215
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = serverUrlInput.trim().replace(/\/+$/, '');
+                    if (trimmed) {
+                      localStorage.setItem('smarthealth_backend_url', trimmed);
+                      setApiBaseUrl(trimmed);
+                    }
+                    setShowServerModal(false);
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/30 text-center"
+                >
+                  {lang === 'hi' ? 'सेव करें एवं कनेक्ट करें' : 'Save & Connect'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
