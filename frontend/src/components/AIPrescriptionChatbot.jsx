@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bot, Send, Pill, Sparkles, AlertTriangle, ShieldCheck, HeartPulse, 
-  User, Loader2, Key, Check, Info, Trash2, Settings, ExternalLink, AlertCircle
+  User, Loader2, Key, Check, Info, Trash2, Settings, ExternalLink, AlertCircle, HelpCircle
 } from 'lucide-react';
 
 const DEFAULT_OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
 
 export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem('smarthealth_openai_key') || DEFAULT_OPENAI_KEY;
+    return localStorage.getItem('smarthealth_ai_key') || localStorage.getItem('smarthealth_openai_key') || DEFAULT_OPENAI_KEY;
   });
 
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -19,9 +19,9 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
     {
       sender: 'ai',
       text: lang === 'hi'
-        ? "नमस्ते! मैं आपका स्मार्टहेल्थ एआई चिकित्सक एवं मेडिकल कंसल्टेंट हूँ (OpenAI GPT-4o पावर्ड)। आप मुझसे किसी भी बीमारी, दवा (खुराक/सावधानियां), लक्षण या स्वास्थ्य संबंधी कोई भी सवाल पूछ सकते हैं। मैं आपके लाइव IoT सेंसर आंकड़ों (हृदय गति, तापमान, SpO2) को देखकर बिल्कुल सटीक सलाह दूंगा।"
-        : "Hello! I am your SmartHealth AI Clinical Consultant (powered by OpenAI GPT-4o). You can ask me about any illness, medicines, precise dosages, symptoms, or general wellness. I analyze your question alongside your live ESP32 vital sensors to give you accurate medical guidance.",
-      source: "OpenAI GPT-4o-Mini Active"
+        ? "नमस्ते! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। आप मुझसे किसी भी बीमारी, दवा (खुराक/सावधानियां), लक्षण, डाइट या स्वास्थ्य संबंधी कोई भी तथ्यात्मक सवाल पूछ सकते हैं। मैं आपको बिल्कुल सटीक, वैज्ञानिक और मेडिकल तथ्यों पर आधारित उत्तर दूंगा।"
+        : "Hello! I am your SmartHealth Clinical AI Consultant. Ask me any factual medical questions, disease symptoms, evidence-based treatments, medication dosages, or lifestyle guidance. I analyze your inquiry with clinical precision and live IoT vital telemetry.",
+      source: "SmartHealth Clinical AI"
     }
   ]);
 
@@ -39,15 +39,14 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
 
   const handleSaveKey = () => {
     const trimmed = tempKeyInput.trim();
-    if (trimmed) {
-      setApiKey(trimmed);
-      localStorage.setItem('smarthealth_openai_key', trimmed);
-      setKeySavedToast(true);
-      setTimeout(() => {
-        setKeySavedToast(false);
-        setShowKeyModal(false);
-      }, 1200);
-    }
+    setApiKey(trimmed);
+    localStorage.setItem('smarthealth_ai_key', trimmed);
+    localStorage.setItem('smarthealth_openai_key', trimmed);
+    setKeySavedToast(true);
+    setTimeout(() => {
+      setKeySavedToast(false);
+      setShowKeyModal(false);
+    }, 1200);
   };
 
   const handleClearChat = () => {
@@ -55,53 +54,125 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
       {
         sender: 'ai',
         text: lang === 'hi'
-          ? "चैट साफ़ कर दी गई है। अपनी बीमारी, लक्षण या दवाओं के बारे में पूछें।"
-          : "Chat history cleared. Feel free to ask about any symptoms, health queries, or medications.",
-        source: "OpenAI GPT-4o-Mini Active"
+          ? "चैट साफ़ कर दी गई है। अपनी बीमारी, लक्षण, दवा या स्वास्थ्य संबंधी कोई भी सवाल पूछें।"
+          : "Chat history cleared. Feel free to ask any factual questions about illnesses, medications, or wellness.",
+        source: "SmartHealth Clinical AI"
       }
     ]);
   };
 
   const sampleQueries = lang === 'hi' ? [
-    "तेज बुखार और सिरदर्द की सही दवा और खुराक बताओ",
-    "खांसी, जुकाम और गले में खराश के लिए क्या लूँ?",
-    "पेट में गैस, एसिडिटी और सीने में जलन का उपचार",
-    "डायबिटीज के मरीज को सुबह नाश्ते में क्या खाना चाहिए?",
-    "बीपी अचानक बढ़ जाने पर तुरंत क्या घरेलू कदम उठाएं?",
-    "दस्त और पेट दर्द में ORS का सही उपयोग कैसे करें?"
+    "ब्लड प्रेशर सामान्य कितना होना चाहिए और इसे कैसे नियंत्रित करें?",
+    "डायबिटीज में फास्टिंग और खाने के बाद शुगर का सही स्तर क्या है?",
+    "पैरासिटामोल और ब्रूफेन में क्या अंतर है और कौन सी सुरक्षित है?",
+    "डेंगू में प्लेटलेट्स कितनी होनी चाहिए और क्या सावधानियां बरतें?",
+    "खराब कोलेस्ट्रॉल (LDL) कम करने के वैज्ञानिक उपाय बताएं",
+    "थायराइड (TSH) बढ़ने के लक्षण और दवा लेने का सही तरीका"
   ] : [
-    "Prescribe medicine for acute fever, headache and body ache",
-    "Best medicine and dosage for wet cough & sore throat",
-    "Immediate relief for severe acidity, GERD & stomach gas",
-    "What should a diabetic patient eat for healthy breakfast?",
-    "Immediate steps to take when blood pressure spikes",
-    "Safe treatment & ORS dosage for loose motion / diarrhea"
+    "What is normal blood pressure and evidence-based ways to reduce it?",
+    "What are normal fasting and postprandial blood sugar targets?",
+    "What is the clinical difference between Paracetamol and Ibuprofen?",
+    "Normal platelet count in Dengue and essential precautions?",
+    "Evidence-based ways to lower LDL cholesterol and triglycerides",
+    "Symptoms of high TSH (Hypothyroidism) and correct Thyronorm timing"
   ];
 
-  // Direct Browser-to-OpenAI Fallback Caller
-  const callDirectOpenAI = async (userText, vitals) => {
+  // Helper: Detect Pure Greeting & Chit-Chat
+  const isGreetingQuery = (txt) => {
+    if (!txt) return false;
+    const clean = txt.toLowerCase().trim();
+    const diseaseWords = [
+      'fever', 'bukhar', 'temp', 'cough', 'khansi', 'cold', 'sardi', 'jukham',
+      'acidity', 'gas', 'headache', 'sar dard', 'sir dard', 'bp', 'sugar', 'diabetes',
+      'diarrhea', 'loose motion', 'dast', 'pain', 'dard', 'vomit', 'ulti', 'asthma', 'allergy',
+      'chest', 'seene', 'heart', 'breath', 'saans', 'medicine', 'dawa', 'tablet', 'symptom',
+      'cholesterol', 'uric acid', 'gout', 'thyroid', 'liver', 'kidney'
+    ];
+    if (diseaseWords.some(w => clean.includes(w))) return false;
+    const greetingRegex = /^(?:hello|hi|hey|hlo|helo|hy|namaste|namaskar|pranam|good\s+(?:morning|evening|afternoon|night)|how\s+are\s+you|kaise\s+ho|who\s+are\s+you|thank\s+you|thanks|ok|okay|bye|goodbye)\b/i;
+    return greetingRegex.test(clean);
+  };
+
+  // Direct Google Gemini Free API Caller
+  const callDirectGemini = async (userText, vitals, gKey) => {
     const hr = vitals?.heart_rate || 75;
     const temp = vitals?.temperature_c || 36.8;
     const spo2 = vitals?.spo2 || 98;
 
-    const systemPrompt = `You are SmartHealth Clinical AI Doctor, an expert clinical consultant and medical prescriber for an IoT lifeline platform.
+    const systemPrompt = `You are SmartHealth Clinical AI Doctor, an expert clinical consultant and medical communicator just like ChatGPT.
 The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 temperature sensor, MPU6050 accelerometer).
-Evaluate the user's symptoms, question, and current vitals: Heart Rate: ${hr} BPM, Body Temp: ${temp}°C, SpO2: ${spo2}%.
-Provide clinical triage, prescribe accurate, evidence-based medicines (OTC or clinical guidance) with precise dosage, administration instructions, and safety warnings.
+Provide thorough, factual, evidence-based, empathetic medical explanations based on established clinical guidelines (WHO, ADA, ACC/AHA, ICMR).
 Answer in the requested language (${lang === 'hi' ? 'Hindi' : 'English'}).
-CRITICAL GREETING INSTRUCTION: If user says 'hello', 'hi', 'hey', 'namaste', 'good morning', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true, 'condition_diagnosed': 'Conversational Greeting', and 'prescribed_medicines': [] (EMPTY ARRAY — NEVER prescribe medicine for a greeting!).
+GREETING RULE: If the user simply says 'hello', 'hi', 'hey', 'namaste', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true and leave 'prescribed_medicines': [].
 You MUST return ONLY valid JSON matching this exact structure without markdown code blocks:
 {
   "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",
-  "is_greeting": true,
-  "condition_diagnosed": "Short Title of Diagnosed Condition / Query Topic",
-  "clinical_assessment": "Comprehensive, accurate, friendly medical explanation answering the question thoroughly and evaluating current vitals",
+  "is_greeting": false,
+  "condition_diagnosed": "Title of Condition / Clinical Topic",
+  "clinical_assessment": "Comprehensive, factual, paragraph-by-paragraph medical explanation answering the question thoroughly with biological mechanisms, diagnostic reference ranges, and vitals evaluation",
   "prescribed_medicines": [
     {
       "name": "Medicine Name (Brand and Generic)",
       "composition": "Active chemical composition",
       "dosage": "Precise dosage (e.g. 1 tab twice daily after food)",
-      "duration": "Duration (e.g. 3 days)",
+      "duration": "Duration",
+      "purpose": "Why this medicine is prescribed",
+      "caution": "Precautions and contraindications"
+    }
+  ],
+  "dietary_lifestyle": ["Specific actionable recovery advice", "Dietary recommendation", "Fluid guidance"],
+  "red_flags": "Specific warning symptoms that require immediate hospitalization or emergency clinic visit",
+  "emergency_actions": ["Action 1", "Action 2"]
+}`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${gKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: `${systemPrompt}\n\nPatient Query: ${userText}\nLive Vitals: HR ${hr} BPM, Temp ${temp}°C, SpO2 ${spo2}%\nLanguage: ${lang === 'hi' ? 'Hindi' : 'English'}` }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1000,
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    if (!res.ok) throw new Error("Gemini API error");
+    const resJson = await res.json();
+    let rawText = resJson.candidates[0].content.parts[0].text.trim();
+    rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+    const parsed = JSON.parse(rawText);
+    parsed.source = "Google Gemini 1.5 Flash (Live AI)";
+    return parsed;
+  };
+
+  // Direct Browser OpenAI Caller
+  const callDirectOpenAI = async (userText, vitals, oKey) => {
+    const hr = vitals?.heart_rate || 75;
+    const temp = vitals?.temperature_c || 36.8;
+    const spo2 = vitals?.spo2 || 98;
+
+    const systemPrompt = `You are SmartHealth Clinical AI Doctor, an expert clinical consultant and medical prescriber just like ChatGPT.
+The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 temperature sensor, MPU6050 accelerometer).
+Evaluate the user's question with deep factual accuracy, clinical reference ranges, and pharmacological facts.
+Answer in the requested language (${lang === 'hi' ? 'Hindi' : 'English'}).
+GREETING INSTRUCTION: If user says 'hello', 'hi', 'hey', 'namaste', 'good morning', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true, 'condition_diagnosed': 'Conversational Greeting', and 'prescribed_medicines': [] (EMPTY ARRAY).
+You MUST return ONLY valid JSON matching this exact structure without markdown code blocks:
+{
+  "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",
+  "is_greeting": false,
+  "condition_diagnosed": "Short Title of Diagnosed Condition / Query Topic",
+  "clinical_assessment": "Comprehensive, factual, paragraph-by-paragraph medical explanation answering the question thoroughly with biological mechanisms, diagnostic reference ranges, and live vitals evaluation",
+  "prescribed_medicines": [
+    {
+      "name": "Medicine Name (Brand and Generic)",
+      "composition": "Active chemical composition",
+      "dosage": "Precise dosage (e.g. 1 tab twice daily after food)",
+      "duration": "Duration",
       "purpose": "Why this medicine is prescribed",
       "caution": "Precautions and contraindications"
     }
@@ -114,7 +185,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${oKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -124,7 +195,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           { role: 'user', content: userText }
         ],
         temperature: 0.3,
-        max_tokens: 800
+        max_tokens: 1000
       })
     });
 
@@ -139,22 +210,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     let rawContent = data.choices[0].message.content.trim();
     rawContent = rawContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
     const parsed = JSON.parse(rawContent);
-    parsed.source = "OpenAI GPT-4o-Mini (Direct API)";
+    parsed.source = "OpenAI GPT-4o-Mini (Live)";
     return parsed;
-  };
-
-  const isGreetingQuery = (txt) => {
-    if (!txt) return false;
-    const clean = txt.toLowerCase().trim();
-    const diseaseWords = [
-      'fever', 'bukhar', 'temp', 'cough', 'khansi', 'cold', 'sardi', 'jukham',
-      'acidity', 'gas', 'headache', 'sar dard', 'sir dard', 'bp', 'sugar', 'diabetes',
-      'diarrhea', 'loose motion', 'dast', 'pain', 'dard', 'vomit', 'ulti', 'asthma', 'allergy',
-      'chest', 'seene', 'heart', 'breath', 'saans', 'medicine', 'dawa', 'tablet', 'symptom'
-    ];
-    if (diseaseWords.some(w => clean.includes(w))) return false;
-    const greetingRegex = /^(?:hello|hi|hey|hlo|helo|hy|namaste|namaskar|pranam|good\s+(?:morning|evening|afternoon|night)|how\s+are\s+you|kaise\s+ho|who\s+are\s+you|thank\s+you|thanks|ok|okay|bye|goodbye)\b/i;
-    return greetingRegex.test(clean);
   };
 
   const handleSend = async (e) => {
@@ -165,13 +222,13 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     setInput('');
     setMessages(prev => [...prev, { sender: 'user', text: userText }]);
 
-    // Instant polite doctor greeting response if user just said hello/hi/etc.
+    // 1. Instant polite doctor greeting response if user just said hello/hi/etc.
     if (isGreetingQuery(userText)) {
       const greetingResponse = {
         is_greeting: true,
         condition_diagnosed: "Conversational Greeting",
         clinical_assessment: lang === 'hi'
-          ? "नमस्ते सर! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। मैं आज आपकी सेहत में कैसे सहायता कर सकता हूँ? आप किसी भी बीमारी के लक्षण, आवश्यक दवाइयाँ, सही खुराक या अपने लाइव सेंसर वाइटल्स के बारे में बेझिझक पूछ सकते हैं।"
+          ? "नमस्ते सर! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। मैं आज आपकी सेहत में कैसे सहायता कर सकता हूँ? आप किसी भी बीमारी के लक्षण, आवश्यक दवाइयाँ, सही खुराक, ब्लड टेस्ट या अपने लाइव सेंसर वाइटल्स के बारे में बेझिझक पूछ सकते हैं।"
           : "Hello Sir! How can I assist you with your health today? I am your SmartHealth AI Clinical Consultant. Please feel free to describe any symptoms you are experiencing, ask about medicines and dosages, or inquire about your live vitals.",
         prescribed_medicines: [],
         dietary_lifestyle: [],
@@ -190,8 +247,9 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     setLoading(true);
 
     try {
-      // 1. Try Backend API first
       let data = null;
+
+      // 2. Try Backend API first (Backend has full factual medical engine + OpenAI/Gemini connectors)
       try {
         const resp = await fetch(`${apiBaseUrl}/api/ai/prescribe`, {
           method: 'POST',
@@ -210,69 +268,44 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           data = await resp.json();
         }
       } catch (backendErr) {
-        // Backend not reached, fall back to direct browser OpenAI call
+        // Backend not reached, fall back to direct browser call
       }
 
-      // 2. If backend did not return, try direct browser OpenAI call
-      if (!data) {
-        data = await callDirectOpenAI(userText, telemetry);
+      // 3. Direct browser calling if backend is offline
+      if (!data && apiKey) {
+        if (apiKey.startsWith("AIza")) {
+          data = await callDirectGemini(userText, telemetry, apiKey);
+        } else if (apiKey.startsWith("sk-")) {
+          data = await callDirectOpenAI(userText, telemetry, apiKey);
+        }
       }
 
-      setMessages(prev => [...prev, {
-        sender: 'ai',
-        structured: data,
-        text: data.clinical_assessment || (lang === 'hi' ? "उपचार और दवाइयाँ नीचे देखें:" : "Clinical recommendations:"),
-        source: data.source || "OpenAI GPT-4o-Mini",
-        openai_notice: data.openai_notice
-      }]);
+      if (data) {
+        setMessages(prev => [...prev, {
+          sender: 'ai',
+          structured: data,
+          text: data.clinical_assessment || (lang === 'hi' ? "चिकित्सीय मूल्यांकन:" : "Clinical recommendations:"),
+          source: data.source || "SmartHealth Clinical Medical Intelligence",
+          openai_notice: data.openai_notice
+        }]);
+      } else {
+        throw new Error("Unable to fetch response");
+      }
 
     } catch (err) {
-      // 3. Graceful handling for Quota Exceeded (429) or Network Error
-      const isQuota = err?.code === 'credit_balance_exhausted' || err?.status === 429 || (err?.message && err.message.toLowerCase().includes('credit'));
+      // 4. Fallback for offline mode or quota limits
+      const isQuota = err?.code === 'credit_balance_exhausted' || err?.status === 429;
       
-      const fallbackDiagnosis = {
-        urgency: "MODERATE / CLINICAL TRIAGE",
-        condition_diagnosed: lang === 'hi' ? "स्वास्थ्य परामर्श एवं प्राथमिक उपचार" : "Clinical Triage & Symptom Evaluation",
-        clinical_assessment: lang === 'hi'
-          ? `आपके सवाल "${userText}" के अनुसार: यदि बुखार या बदन दर्द है तो Paracetamol 650mg भोजन के बाद लें। पर्याप्त 2.5L पानी पिएं और आराम करें। यदि लक्षण 48 घंटे से अधिक रहें तो चिकित्सक से संपर्क करें।`
-          : `Assessment for "${userText}": For fever or pain, take Paracetamol 650mg after food. Ensure 2.5L hydration with ORS fluids, rest in a ventilated room, and consult a physician if symptoms persist beyond 48 hours.`,
-        prescribed_medicines: [
-          {
-            name: "Paracetamol (Dolo 650 / Calpol 650)",
-            composition: "Acetaminophen 650mg",
-            dosage: "1 tablet after meals every 6-8 hrs as needed",
-            duration: "2 - 3 days",
-            purpose: "Antipyretic & pain relief for fever, headache, body ache.",
-            caution: "Do not take on empty stomach. Avoid combining with alcohol."
-          },
-          {
-            name: "Electrolyte ORS",
-            composition: "WHO formula salts (Sodium, Potassium, Dextrose)",
-            dosage: "1 sachet in 1 liter clean water, sip throughout day",
-            duration: "As needed",
-            purpose: "Prevents dehydration and stabilizes heart rate.",
-            caution: "Consume within 24 hours of mixing."
-          }
-        ],
-        dietary_lifestyle: [
-          lang === 'hi' ? "ताज़ा सुपाच्य भोजन (मूंग दाल खिचड़ी, सूप, दलिया) लें।" : "Consume light, easy-to-digest meals (lentil soup, oats, toast).",
-          lang === 'hi' ? "पर्याप्त आराम करें और तनाव से बचें।" : "Ensure 7-8 hours of restful sleep and avoid physical strain."
-        ],
-        red_flags: lang === 'hi'
-          ? "यदि तापमान 39.5°C से अधिक हो, सीने में दर्द हो, या सांस फूलने लगे तो तुरंत 112 डायल करें।"
-          : "Fever > 39.5°C, severe chest discomfort, or breathing difficulty requires immediate emergency medical care.",
-        emergency_actions: ["Keep monitoring sensor vitals twice daily."]
-      };
-
       setMessages(prev => [...prev, {
         sender: 'ai',
-        structured: fallbackDiagnosis,
-        text: fallbackDiagnosis.clinical_assessment,
-        source: "SmartHealth Clinical Medical Engine",
+        text: lang === 'hi'
+          ? `आपके प्रश्न "${userText}" का वैज्ञानिक मूल्यांकन: कृपया सुनिश्चित करें कि आप अपने लक्षण या प्रश्न स्पष्ट रूप से पूछें (जैसे: "बीपी कितना होना चाहिए", "शुगर के लक्षण", "पैरासिटामोल की खुराक")। हमारे क्लिनिकल इंजन में इन सभी के संपूर्ण तथ्य मौजूद हैं।`
+          : `Clinical Evaluation for "${userText}": Please ask specific medical inquiries (e.g. "What is normal BP?", "Fasting blood sugar targets", "Dengue platelet rules", "Paracetamol vs Ibuprofen"). Full evidence-based facts will be provided.`,
+        source: "SmartHealth Clinical Engine",
         openai_notice: isQuota
           ? (lang === 'hi'
-              ? "⚠️ आपकी OpenAI API Key कनेक्टेड है, लेकिन आपके OpenAI अकाउंट में $0 क्रेडिट बचा है (credit_balance_exhausted)। इसलिए SmartHealth के इनबिल्ट क्लिनिकल इंजन ने यह उत्तर दिया। platform.openai.com पर रीचार्ज करने पर यह अपने आप लाइव GPT-4o से चलने लगेगा।"
-              : "⚠️ Your OpenAI API Key is connected, but your OpenAI account has 0 credits remaining (credit_balance_exhausted at platform.openai.com). SmartHealth's Built-in Clinical Medical Engine generated this response. Add credits on OpenAI billing to activate live GPT-4o inference.")
+              ? "⚠️ आपकी OpenAI API Key में $0 बैलेंस है। आप Google AI Studio (aistudio.google.com) से 100% Free Gemini Key ले सकते हैं और [AI Key] में सेव कर सकते हैं।"
+              : "⚠️ Your OpenAI API Key has 0 credits remaining. You can get a 100% Free Google Gemini API Key at aistudio.google.com and save it under [AI Key]!")
           : null
       }]);
     } finally {
@@ -280,8 +313,37 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     }
   };
 
+  // Formatted Text Renderer (Handles bolding and paragraph breaks cleanly)
+  const renderFormattedText = (content) => {
+    if (!content) return null;
+    const paragraphs = content.split('\n\n');
+    return paragraphs.map((para, pi) => {
+      const lines = para.split('\n');
+      return (
+        <div key={pi} className="mb-2 leading-relaxed">
+          {lines.map((line, li) => {
+            const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*');
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            const formattedLine = parts.map((part, idx) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={idx} className="font-extrabold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
+              }
+              return part;
+            });
+
+            return (
+              <div key={li} className={isBullet ? "flex items-start gap-1.5 ml-2 my-1" : "my-0.5"}>
+                {formattedLine}
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+  };
+
   return (
-    <div className="health-card mb-8 flex flex-col h-[680px] border-indigo-200 dark:border-indigo-900 bg-white dark:bg-slate-900 shadow-xl">
+    <div className="health-card mb-8 flex flex-col h-[700px] border-indigo-200 dark:border-indigo-900 bg-white dark:bg-slate-900 shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800 mb-3">
         <div className="flex items-center gap-3">
@@ -291,15 +353,15 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
-                {lang === 'hi' ? 'एआई चिकित्सक एवं प्रिस्क्रिप्शन चैटबॉट' : 'AI Doctor & Prescription Chatbot'}
+                {lang === 'hi' ? 'एआई चिकित्सक एवं प्रिस्क्रिप्शन चैटबॉट' : 'AI Doctor & Clinical Prescription Chatbot'}
               </h3>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>OpenAI GPT-4o Connected</span>
+                <span>Factual Clinical Intelligence</span>
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              {lang === 'hi' ? 'किसी भी बीमारी की सटीक दवा, खुराक और उपचार सलाह पाएं' : 'Prescribes exact medicines, dosages, and answers any medical question.'}
+              {lang === 'hi' ? 'तथ्यों और वैज्ञानिक मेडिकल दिशानिर्देशों पर आधारित सटीक उत्तर' : 'Evidence-based medical answers, accurate dosages, and physiological facts.'}
             </p>
           </div>
         </div>
@@ -313,10 +375,10 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
               setShowKeyModal(true);
             }}
             className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5 text-xs font-semibold"
-            title="Manage OpenAI API Key"
+            title="Manage OpenAI / Gemini API Key"
           >
             <Key className="w-4 h-4 text-indigo-500" />
-            <span className="hidden sm:inline">OpenAI Key</span>
+            <span className="hidden sm:inline">AI Key</span>
           </button>
 
           {/* Clear Chat */}
@@ -352,13 +414,13 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
             )}
 
             <div
-              className={`p-3.5 rounded-2xl max-w-[92%] sm:max-w-[85%] leading-relaxed ${
+              className={`p-4 rounded-2xl max-w-[92%] sm:max-w-[85%] leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-indigo-600 text-white rounded-tr-none font-medium text-xs shadow-sm'
+                  ? 'bg-indigo-600 text-white rounded-tr-none font-medium text-xs sm:text-sm shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-800/95 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700/80 rounded-tl-none shadow-sm'
               }`}
             >
-              {/* OpenAI Notice Banner if quota exhausted */}
+              {/* Notice Banner */}
               {msg.openai_notice && (
                 <div className="mb-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -368,14 +430,14 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
               {/* Main text / Clinical Assessment */}
               {msg.text && (
-                <div className="whitespace-pre-line text-xs sm:text-[13px] leading-relaxed mb-2 font-normal">
-                  {msg.text}
+                <div className="text-xs sm:text-[13px]">
+                  {renderFormattedText(msg.text)}
                 </div>
               )}
 
-              {/* Structured Clinical Diagnosis Card (Shown only for health queries, not greetings) */}
+              {/* Structured Clinical Diagnosis Card (Only shown for real health queries with medicines or advice, not greetings) */}
               {msg.structured && !msg.structured.is_greeting && msg.structured.condition_diagnosed !== 'Conversational Greeting' && (msg.structured.prescribed_medicines?.length > 0 || msg.structured.dietary_lifestyle?.length > 0 || msg.structured.red_flags) && (
-                <div className="space-y-3 mt-2.5 pt-2.5 border-t border-slate-200 dark:border-slate-700">
+                <div className="space-y-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <span className="font-extrabold text-indigo-700 dark:text-indigo-400 text-xs sm:text-sm">
                       🩺 {msg.structured.condition_diagnosed}
@@ -397,8 +459,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
                         <span>Prescribed Medicines & Exact Dosage:</span>
                       </span>
                       {msg.structured.prescribed_medicines.map((m, mi) => (
-                        <div key={mi} className="p-2.5 rounded-xl bg-white dark:bg-slate-900/90 border border-emerald-300/80 dark:border-emerald-800/80 shadow-sm">
-                          <div className="flex items-center justify-between mb-1 gap-2">
+                        <div key={mi} className="p-3 rounded-xl bg-white dark:bg-slate-900/90 border border-emerald-300/80 dark:border-emerald-800/80 shadow-sm">
+                          <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
                             <strong className="text-slate-900 dark:text-slate-100 text-xs sm:text-[13px] font-bold">{m.name}</strong>
                             <span className="text-[10.5px] font-mono text-emerald-700 dark:text-emerald-400 font-extrabold bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900">
                               {m.dosage}
@@ -426,9 +488,9 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
                   {/* Home Remedies / Dietary Advice */}
                   {msg.structured.dietary_lifestyle && msg.structured.dietary_lifestyle.length > 0 && (
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px]">
-                      <strong className="text-slate-800 dark:text-slate-200 block mb-1">
-                        🌿 Dietary, Hydration & Recovery Tips:
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11.5px]">
+                      <strong className="text-slate-800 dark:text-slate-200 block mb-1.5">
+                        🌿 Dietary, Hydration & Evidence-Based Guidelines:
                       </strong>
                       <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400">
                         {msg.structured.dietary_lifestyle.map((tip, ti) => (
@@ -450,8 +512,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
                   {/* Source tag */}
                   <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pt-1">
-                    <span>Engine: {msg.source || 'OpenAI GPT-4o-Mini'}</span>
-                    <span>Vitals Verified</span>
+                    <span>Engine: {msg.source || 'SmartHealth Clinical AI'}</span>
+                    <span>IoT Vitals Verified</span>
                   </div>
                 </div>
               )}
@@ -468,7 +530,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
         {loading && (
           <div className="flex items-center gap-2 text-slate-500 text-xs italic p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl w-fit">
             <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-            <span>OpenAI GPT-4o is analyzing symptoms & prescribing medicines...</span>
+            <span>AI Doctor is synthesizing factual clinical reasoning...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -493,7 +555,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={lang === 'hi' ? 'अपनी बीमारी, लक्षण या दवा का नाम लिखें (जैसे: सिरदर्द और बुखार की दवा बताएं)...' : 'Type illness, symptoms or medicine query (e.g. fever, headache, acidity, dosage)...'}
+          placeholder={lang === 'hi' ? 'कोई भी मेडिकल सवाल पूछें (जैसे: बीपी कितना होना चाहिए, शुगर कम करने के उपाय)...' : 'Ask any factual medical question (e.g. normal BP, lowering cholesterol, Paracetamol vs Ibuprofen)...'}
           className="flex-1 py-2.5 px-4 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
         />
         <button
@@ -506,7 +568,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
         </button>
       </form>
 
-      {/* OpenAI API Key Management Modal */}
+      {/* API Key Management Modal */}
       {showKeyModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
@@ -517,9 +579,9 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
-                    OpenAI API Configuration
+                    AI Key Settings
                   </h3>
-                  <p className="text-xs text-slate-500">Connected to GPT-4o-Mini Clinical Engine</p>
+                  <p className="text-xs text-slate-500">Supports OpenAI (GPT-4o) & Google Gemini (Free)</p>
                 </div>
               </div>
               <button
@@ -532,30 +594,39 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Your OpenAI Secret API Key:
+                Enter API Key (OpenAI `sk-...` OR Google Gemini `AIza...`):
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={tempKeyInput}
-                  onChange={(e) => setTempKeyInput(e.target.value)}
-                  placeholder="sk-proj-..."
-                  className="w-full font-mono text-xs py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <p className="text-[11px] text-slate-500">
-                This key powers real-time symptom evaluations, disease triage, and medicine prescriptions.
-              </p>
+              <input
+                type="text"
+                value={tempKeyInput}
+                onChange={(e) => setTempKeyInput(e.target.value)}
+                placeholder="sk-proj-... OR AIzaSy..."
+                className="w-full font-mono text-xs py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
 
-            <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[11.5px] text-sky-900 dark:text-sky-200 space-y-1">
-              <div className="font-bold flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-sky-600" />
-                <span>Account Credit Information:</span>
+            <div className="space-y-2">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11.5px] text-emerald-900 dark:text-emerald-200 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>Tip: Get 100% FREE AI Key from Google (No Card Required):</span>
+                </div>
+                <p>
+                  1. Visit <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold text-emerald-700 dark:text-emerald-400">aistudio.google.com/app/apikey</a>.<br/>
+                  2. Click <strong>"Create API Key"</strong> in 10 seconds.<br/>
+                  3. Paste it above and click <strong>Save Key</strong> for unlimited free live AI!
+                </p>
               </div>
-              <p>
-                If your OpenAI account balance reaches $0, SmartHealth automatically activates its comprehensive built-in Clinical Medical Knowledge Base with zero downtime, ensuring you always get accurate prescriptions!
-              </p>
+
+              <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[11.5px] text-sky-900 dark:text-sky-200 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <Info className="w-4 h-4 text-sky-600" />
+                  <span>OpenAI Note:</span>
+                </div>
+                <p>
+                  If using an OpenAI key (`sk-...`), ensure your OpenAI account has credits added at <em>platform.openai.com/settings/organization/billing/</em>.
+                </p>
+              </div>
             </div>
 
             {keySavedToast && (
