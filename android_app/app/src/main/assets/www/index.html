@@ -450,12 +450,12 @@
       <div class="vitals-grid">
         <div class="vital-card">
           <div class="vital-label">Heart Rate</div>
-          <div class="vital-value" id="valHr" style="color: #38bdf8;">74.0</div>
+          <div class="vital-value" id="valHr" style="color: #38bdf8;">--</div>
           <div class="vital-sub"><span>BPM</span><span>MAX30102</span></div>
         </div>
         <div class="vital-card">
           <div class="vital-label">Blood Oxygen</div>
-          <div class="vital-value" id="valSpo2" style="color: #10b981;">98.4</div>
+          <div class="vital-value" id="valSpo2" style="color: #10b981;">--</div>
           <div class="vital-sub"><span>% SpO2</span><span>Optical</span></div>
         </div>
         <div class="vital-card">
@@ -467,6 +467,18 @@
           <div class="vital-label">Impact Force</div>
           <div class="vital-value" id="valAccel" style="color: #cbd5e1;">0.99</div>
           <div class="vital-sub"><span>g</span><span>MPU6050</span></div>
+        </div>
+        <!-- 5. Dedicated GPS Module Card -->
+        <div class="vital-card" style="grid-column: span 2;">
+          <div class="vital-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>📍 GPS Location (NEO-6M)</span>
+            <span id="valGpsSats" style="color: #10b981; font-size: 10px; font-weight: 700; background: rgba(16, 185, 129, 0.15); padding: 2px 8px; border-radius: 10px;">8 Sats Locked</span>
+          </div>
+          <div class="vital-value" id="valGps" style="color: #10b981; font-size: 17px; margin-top: 4px;">28.6139° N, 77.2090° E</div>
+          <div class="vital-sub" style="margin-top: 6px;">
+            <span id="valGpsStatus" style="color: #94a3b8;">3D Satellite Fix Active</span>
+            <a id="mapsLinkCard" href="https://maps.google.com/?q=28.6139,77.2090" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 700;">Open in Maps ↗</a>
+          </div>
         </div>
       </div>
 
@@ -728,7 +740,7 @@
       secondary_guardian_number: "+919811223344",
       ambulance_number: "108",
       delay_seconds: 10,
-      api_url: "http://localhost:8000"
+      api_url: "http://172.28.28.245:8000"
     };
 
     // Load saved settings from localStorage
@@ -996,11 +1008,42 @@
     }
 
     function updateUI(evalData) {
-      document.getElementById('valHr').innerText = telemetry.heart_rate;
-      document.getElementById('waveBpm').innerText = telemetry.heart_rate + " BPM";
-      document.getElementById('valSpo2').innerText = telemetry.spo2;
-      document.getElementById('valTemp').innerText = telemetry.temperature_c;
-      document.getElementById('valAccel').innerText = telemetry.acceleration_g;
+      const hr = Number(telemetry.heart_rate || 0);
+      document.getElementById('valHr').innerText = hr > 0 ? hr.toFixed(1) : '--';
+      document.getElementById('waveBpm').innerText = hr > 0 ? (hr.toFixed(1) + " BPM") : 'Detecting pulse...';
+
+      const spo2 = Number(telemetry.spo2 || 0);
+      document.getElementById('valSpo2').innerText = spo2 > 0 ? spo2.toFixed(1) : '--';
+
+      const temp = Number(telemetry.temperature_c || 25.4);
+      document.getElementById('valTemp').innerText = temp.toFixed(1);
+
+      const accel = Number(telemetry.acceleration_g || 1.0);
+      document.getElementById('valAccel').innerText = accel.toFixed(2);
+
+      const lat = Number(telemetry.latitude || 28.6139).toFixed(4);
+      const lng = Number(telemetry.longitude || 77.2090).toFixed(4);
+      const sats = telemetry.satellites || 0;
+      const isGpsValid = Boolean(telemetry.gps_valid);
+
+      if (document.getElementById('valGps')) {
+        document.getElementById('valGps').innerText = `${lat}° N, ${lng}° E`;
+      }
+      if (document.getElementById('valGpsSats')) {
+        document.getElementById('valGpsSats').innerText = sats > 0 ? `${sats} Sats Locked` : '0 Sats';
+      }
+      if (document.getElementById('valGpsStatus')) {
+        document.getElementById('valGpsStatus').innerText = isGpsValid ? '3D Satellite Fix Active' : (sats > 0 ? `Tracking ${sats} Satellites` : 'Acquiring (Indoors)');
+      }
+      if (document.getElementById('mapsLinkCard')) {
+        document.getElementById('mapsLinkCard').href = `https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}`;
+      }
+      if (document.getElementById('mapsLink')) {
+        document.getElementById('mapsLink').href = `https://maps.google.com/?q=${telemetry.latitude},${telemetry.longitude}`;
+      }
+      if (document.getElementById('gpsCoords')) {
+        document.getElementById('gpsCoords').innerText = `Lat: ${lat} | Lng: ${lng} | ${sats} Satellites Locked`;
+      }
 
       zone = evalData.zone || 'GREEN';
       const hero = document.getElementById('zoneHero');
