@@ -27,7 +27,7 @@
 const char* WIFI_SSID = "Pankaj";
 const char* WIFI_PASSWORD = "12345678";
 
-// Target Backend URL (Render URL ya Local IP: e.g. "http://10.25.212.245:8000")
+// Target Backend URL (Render URL ya Local IP: e.g. "http://10.103.4.215:8000")
 const char* SERVER_URL = "http://10.217.201.245:8000";
 
 // =====================================================

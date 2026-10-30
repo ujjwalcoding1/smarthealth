@@ -278,6 +278,10 @@ async def trigger_emergency_sos(incident: Dict[str, Any]):
 
 @app.post("/api/sos/cancel")
 async def cancel_sos():
+    simulator.set_mode("NORMAL")
+    simulator.fall_triggered_until = 0
+    latest_telemetry_dict["impact_detected"] = False
+    latest_telemetry_dict["acceleration_g"] = 0.98
     cancel_event = {
         "type": "SOS_CANCELLED",
         "message": "User safely cancelled the countdown.",
