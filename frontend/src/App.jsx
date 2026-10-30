@@ -63,16 +63,17 @@ export function App() {
   // Live IoT Telemetry State
   const [telemetry, setTelemetry] = useState({
     device_id: "ESP32-HARDWARE",
-    heart_rate: 74.0,
-    spo2: 98.4,
-    temperature_c: 36.7,
-    acceleration_g: 0.99,
-    ax: 0.02, ay: -0.04, az: 0.99,
+    heart_rate: 0.0,
+    spo2: 0.0,
+    temperature_c: 25.4,
+    acceleration_g: 1.0,
+    ax: 0.0, ay: 0.0, az: 1.0,
     impact_detected: false,
+    finger_detected: false,
     latitude: 28.6139,
     longitude: 77.2090,
-    satellites: 8,
-    gps_valid: true
+    satellites: 0,
+    gps_valid: false
   });
 
   const [zoneEvaluation, setZoneEvaluation] = useState({
@@ -640,6 +641,10 @@ export function App() {
               bpm={telemetry.heart_rate}
               zone={zoneEvaluation.zone}
               telemetry={telemetry}
+              hardwareActive={hardwareActive}
+              fingerDetected={telemetry.finger_detected}
+              isSimulated={!hardwareActive && simulatorMode !== 'NORMAL'}
+              lang={lang}
               t={t}
             />
 
