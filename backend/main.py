@@ -35,22 +35,7 @@ app.add_middleware(
 HARDWARE_TIMEOUT_SECONDS = 30.0  # 30-second window ensures network latency does not trigger false fallback
 last_hardware_time = 0.0
 
-latest_telemetry_dict = {
-    "device_id": "ESP32-HARDWARE",
-    "heart_rate": 0.0,
-    "spo2": 0.0,
-    "temperature_c": 25.4,
-    "acceleration_g": 1.0,
-    "ax": 0.0, "ay": 0.0, "az": 1.0,
-    "impact_detected": False,
-    "finger_detected": False,
-    "sensor_source": "STANDBY",
-    "latitude": 28.6139,
-    "longitude": 77.2090,
-    "satellites": 0,
-    "gps_valid": False,
-    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-}
+latest_telemetry_dict = simulator.get_reading()
 latest_zone_evaluation = evaluate_vitals_zone(TelemetryPayload(**latest_telemetry_dict))
 
 class ConnectionManager:
@@ -87,32 +72,13 @@ async def startup_event():
                 if hardware_active:
                     # Physical ESP32 Hardware is ONLINE!
                     # SIMULATOR IS 100% PAUSED / MUTED to prevent data collision.
+                    # NEVER call simulator.get_reading() while hardware is streaming.
                     payload = TelemetryPayload(**latest_telemetry_dict)
                     latest_zone_evaluation = evaluate_vitals_zone(payload)
                 else:
-                    # ESP32 is OFFLINE: If a specific simulation scenario is activated, run it
-                    if simulator.mode != "NORMAL":
-                        sim_data = simulator.get_reading()
-                        latest_telemetry_dict = sim_data
-                    else:
-                        # Standby mode when hardware is not streaming:
-                        # Keep heart_rate 0.0 and finger_detected False so frontend shows a clean simple line!
-                        latest_telemetry_dict = {
-                            "device_id": "ESP32-HARDWARE",
-                            "heart_rate": 0.0,
-                            "spo2": 0.0,
-                            "temperature_c": 25.4,
-                            "acceleration_g": 1.0,
-                            "ax": 0.0, "ay": 0.0, "az": 1.0,
-                            "impact_detected": False,
-                            "finger_detected": False,
-                            "sensor_source": "STANDBY",
-                            "latitude": 28.6139,
-                            "longitude": 77.2090,
-                            "satellites": 0,
-                            "gps_valid": False,
-                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-                        }
+                    # ESP32 is OFFLINE: Only now run simulated demo data as fallback
+                    sim_data = simulator.get_reading()
+                    latest_telemetry_dict = sim_data
                     payload = TelemetryPayload(**latest_telemetry_dict)
                     latest_zone_evaluation = evaluate_vitals_zone(payload)
 
@@ -191,16 +157,10 @@ async def ingest_iot_telemetry(data: TelemetryPayload):
         raw_dict["timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
     raw_dict["sensor_source"] = "HARDWARE"
 
-    # Physiological sanitization:
-    # If no finger is placed on MAX30102 (IR < 30000 or BPM <= 25), sensor is idle
+    # Physiological sanitization to eliminate sensor noise & collapses
     ir = raw_dict.get("ir_value", 0)
-    hr = raw_dict.get("heart_rate", 0.0)
-    finger = raw_dict.get("finger_detected", False)
-
-    if ir < 30000 or hr <= 25.0 or not finger:
+    if ir > 0 and ir < 25000:
         raw_dict["finger_detected"] = False
-        raw_dict["heart_rate"] = 0.0
-        raw_dict["spo2"] = 0.0
     else:
         raw_dict["finger_detected"] = True
 
