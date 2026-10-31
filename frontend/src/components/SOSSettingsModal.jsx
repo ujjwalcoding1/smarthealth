@@ -3,7 +3,9 @@ import { Phone, ShieldAlert, User, Save, CheckCircle, Clock, AlertTriangle, X } 
 
 export function SOSSettingsModal({ isOpen, onClose, sosConfig, onSaveConfig, lang }) {
   const [config, setConfig] = useState({
-    primary_sos_number: "112",
+    primary_sos_number: "+919811223344",
+    primary_contact_name: "My Phone (Primary Contact)",
+    alert_email: "emergency.alert@smarthealth.org",
     secondary_guardian_number: "+919811223344",
     secondary_guardian_name: "Family Guardian",
     ambulance_number: "108",
@@ -11,6 +13,7 @@ export function SOSSettingsModal({ isOpen, onClose, sosConfig, onSaveConfig, lan
     doctor_name: "Dr. Sameer Verma",
     auto_dial_delay_seconds: 10,
     enable_sms_alert: true,
+    enable_email_alert: true,
     custom_message: "EMERGENCY: Patient fell or requires urgent medical attention!"
   });
 
@@ -38,7 +41,7 @@ export function SOSSettingsModal({ isOpen, onClose, sosConfig, onSaveConfig, lan
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl text-xs">
+      <div className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl text-xs max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -55,27 +58,52 @@ export function SOSSettingsModal({ isOpen, onClose, sosConfig, onSaveConfig, lan
               {lang === 'hi' ? 'आपातकालीन एसओएस नंबर प्रबंधित करें' : 'Emergency SOS Dialer Settings'}
             </h3>
             <p className="text-slate-500 text-[11px]">
-              {lang === 'hi' ? 'फॉल होने पर किस नंबर पर कॉल जाएगी, यहाँ से बदलें' : 'Configure the exact numbers dialed automatically during fall or panic triggers.'}
+              {lang === 'hi' ? 'फॉल या एसओएस पर किस नंबर पर कॉल व एसएमएस जाएगी, यहाँ से बदलें' : 'Configure the exact numbers dialed automatically during fall or panic triggers.'}
             </p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
-          {/* Primary SOS Number */}
+          {/* Primary SOS Number and Name */}
           <div className="p-3 rounded-2xl bg-red-50/70 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60">
             <label className="block text-red-900 dark:text-red-300 font-bold mb-1 text-xs flex items-center justify-between">
-              <span>🚨 Primary SOS Auto-Dial Target</span>
+              <span>🚨 Primary SOS Auto-Dial & SMS Target</span>
               <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.2 rounded font-mono">PRIORITY 1</span>
             </label>
-            <input
-              type="text" required
-              value={config.primary_sos_number}
-              onChange={e => setConfig({ ...config, primary_sos_number: e.target.value })}
-              placeholder="e.g. 112 or Family Phone"
-              className="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-red-300 dark:border-red-800 text-slate-900 dark:text-slate-100 font-mono font-bold text-sm"
-            />
-            <span className="text-[10.5px] text-red-700 dark:text-red-400 mt-1 block">
-              When a fall is detected, this number is dialed immediately after the countdown.
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Contact Label</label>
+                <input
+                  type="text" required
+                  value={config.primary_contact_name || ''}
+                  onChange={e => setConfig({ ...config, primary_contact_name: e.target.value })}
+                  placeholder="e.g. My Phone"
+                  className="w-full p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Phone Number</label>
+                <input
+                  type="tel" required
+                  value={config.primary_sos_number || ''}
+                  onChange={e => setConfig({ ...config, primary_sos_number: e.target.value })}
+                  placeholder="e.g. +919811223344"
+                  className="w-full p-2 rounded-xl bg-white dark:bg-slate-800 border border-red-300 dark:border-red-800 text-slate-900 dark:text-slate-100 font-mono font-bold"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">Emergency Alert Email</label>
+              <input
+                type="email"
+                value={config.alert_email || ''}
+                onChange={e => setConfig({ ...config, alert_email: e.target.value })}
+                placeholder="your.email@example.com"
+                className="w-full p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono"
+              />
+            </div>
+            <span className="text-[10.5px] text-red-700 dark:text-red-400 mt-1.5 block">
+              Directly dials and sends SMS to this number with live GPS coordinates, instead of calling 112.
             </span>
           </div>
 

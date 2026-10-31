@@ -1,22 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Plus, Trash2, Edit2, Check, X, Building2, UserPlus, 
   Pill, Globe, Phone, MapPin, DollarSign, Clock, AlertCircle, Search,
-  Mail, Users, CheckCircle2, BedDouble, Stethoscope
+  Mail, Users, CheckCircle2, BedDouble, Stethoscope, PhoneCall, MessageSquare,
+  ShieldAlert, Save, Send, Smartphone, ExternalLink
 } from 'lucide-react';
 
 export function AdminPortal({ 
   doctors, hospitals, medicines, govSchemes,
   caregiverConfig, onUpdateCaregiverConfig,
+  sosConfig, onUpdateSosConfig,
   onAddDoctor, onDeleteDoctor,
   onAddHospital, onDeleteHospital,
   onAddMedicine, onDeleteMedicine,
   onAddGovScheme,
   apiBaseUrl, lang
 }) {
-  const [activeTab, setActiveTab] = useState('doctors');
+  const [activeTab, setActiveTab] = useState('sos');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // SOS & Emergency Calling / SMS Form State
+  const [sosForm, setSosForm] = useState({
+    primary_sos_number: sosConfig?.primary_sos_number || '+919811223344',
+    primary_contact_name: sosConfig?.primary_contact_name || 'My Phone (Primary Contact)',
+    alert_email: sosConfig?.alert_email || 'guardian.care@smarthealth.org',
+    secondary_guardian_number: sosConfig?.secondary_guardian_number || '+919811223344',
+    secondary_guardian_name: sosConfig?.secondary_guardian_name || 'Family Guardian',
+    ambulance_number: sosConfig?.ambulance_number || '108',
+    doctor_phone: sosConfig?.doctor_phone || '+919876543210',
+    doctor_name: sosConfig?.doctor_name || 'Dr. Sameer Verma',
+    auto_dial_delay_seconds: sosConfig?.auto_dial_delay_seconds || 10,
+    enable_sms_alert: sosConfig?.enable_sms_alert ?? true,
+    enable_email_alert: sosConfig?.enable_email_alert ?? true,
+    custom_message: sosConfig?.custom_message || '🚨 EMERGENCY ALERT: Patient triggered SOS! Urgent medical assistance required.'
+  });
+  const [sosSavedToast, setSosSavedToast] = useState(false);
+
+  useEffect(() => {
+    if (sosConfig) {
+      setSosForm(prev => ({
+        ...prev,
+        ...sosConfig,
+        primary_sos_number: sosConfig.primary_sos_number || prev.primary_sos_number,
+        primary_contact_name: sosConfig.primary_contact_name || prev.primary_contact_name,
+        alert_email: sosConfig.alert_email || prev.alert_email
+      }));
+    }
+  }, [sosConfig]);
+
+  const handleSaveSosSettings = (e) => {
+    e.preventDefault();
+    if (onUpdateSosConfig) {
+      onUpdateSosConfig(sosForm);
+    }
+    setSosSavedToast(true);
+    setTimeout(() => setSosSavedToast(false), 2500);
+  };
 
   // Caregiver form state
   const [caregiverEmailForm, setCaregiverEmailForm] = useState({
@@ -217,7 +257,7 @@ export function AdminPortal({
           </div>
         </div>
 
-        {activeTab !== 'caregiver' && (
+        {activeTab !== 'caregiver' && activeTab !== 'sos' && (
           <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg transition-transform active:scale-95"
@@ -232,6 +272,16 @@ export function AdminPortal({
 
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 my-4 border-b border-slate-800 pb-2 overflow-x-auto">
+        <button
+          onClick={() => { setActiveTab('sos'); setSearchQuery(''); }}
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            activeTab === 'sos' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+          <span>🚨 SOS Call & SMS ({sosConfig?.primary_sos_number || 'Setup'})</span>
+        </button>
+
         <button
           onClick={() => { setActiveTab('doctors'); setSearchQuery(''); }}
           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all whitespace-nowrap ${
@@ -282,6 +332,247 @@ export function AdminPortal({
           <span>Govt Portals ({govSchemes?.length || 0})</span>
         </button>
       </div>
+
+      {/* TAB 0: SOS CALL, SMS & EMERGENCY CONTACTS (REPLACES 112) */}
+      {activeTab === 'sos' && (
+        <div className="space-y-6 animate-fade-in">
+          {sosSavedToast && (
+            <div className="p-4 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-200 text-sm font-bold flex items-center gap-3 shadow-lg animate-fade-in">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+              <div>
+                <p>Emergency SOS Calling Number & SMS/Email Configuration Updated Successfully!</p>
+                <p className="text-xs font-normal text-emerald-300">All emergency SOS triggers and buttons will now directly dial {sosForm.primary_sos_number} and send alerts to {sosForm.alert_email}.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Banner: Replaces 112 with Personal Number */}
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-red-950/80 via-slate-900 to-indigo-950/80 border-2 border-red-500/60 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="p-3 rounded-2xl bg-red-600 text-white shadow-lg animate-pulse flex-shrink-0">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-base font-extrabold text-white">
+                    {lang === 'hi' ? 'कस्टम आपातकालीन एसओएस नंबर एवं एसएमएस सेटिंग्स' : 'Custom SOS Direct Call, SMS & Alert Email Settings'}
+                  </h4>
+                  <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-red-600/30 text-red-300 font-bold border border-red-500/40">
+                    Personalized Emergency Dispatch
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  {lang === 'hi'
+                    ? 'यहाँ अपना व्यक्तिगत फ़ोन नंबर और ईमेल दर्ज करें। जब भी आप या मरीज़ एसओएस बटन दबाएंगे, तो सिस्टम 112 पर कॉल करने के बजाय सीधे आपके नंबर पर कॉल करेगा और लाइव जीपीएस लोकेशन व विटल्स के साथ तुरंत SMS और ईमेल अलर्ट भेजेगा।'
+                    : 'Configure your own personal phone number and alert email below. Whenever SOS is pressed or triggered, the web app and Android native call dialer will directly call your personal number via tel: and dispatch instant SMS and Email alerts with live patient vitals and Google Maps GPS coordinates, instead of calling Emergency 112.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveSosSettings} className="space-y-6">
+            {/* Part 1: Primary Calling & SMS Target */}
+            <div className="p-5 rounded-2xl bg-slate-800/90 border border-slate-700 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                <div className="flex items-center gap-2">
+                  <PhoneCall className="w-5 h-5 text-red-400" />
+                  <h5 className="font-bold text-sm text-white">1. Primary SOS Phone Number (Replaces 112)</h5>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-red-950 text-red-300 font-bold border border-red-800">
+                  PRIMARY INTENT TARGET
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 font-bold text-xs mb-1.5 flex items-center justify-between">
+                    <span>Your Mobile Number (Dial Target) *</span>
+                    <span className="text-[10px] text-red-400 font-mono">Format: +91XXXXXXXXXX</span>
+                  </label>
+                  <div className="relative">
+                    <Smartphone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                    <input
+                      type="tel" required
+                      value={sosForm.primary_sos_number}
+                      onChange={e => setSosForm({ ...sosForm, primary_sos_number: e.target.value })}
+                      placeholder="e.g. +91 98765 43210"
+                      className="w-full pl-9 p-2.5 rounded-xl bg-slate-900 border border-red-500/70 text-white font-mono font-bold text-sm focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <span className="text-[10.5px] text-slate-400 mt-1 block">
+                    This phone number will be dialed immediately when the emergency SOS countdown completes.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-bold text-xs mb-1.5">
+                    Contact Label / Name *
+                  </label>
+                  <input
+                    type="text" required
+                    value={sosForm.primary_contact_name}
+                    onChange={e => setSosForm({ ...sosForm, primary_contact_name: e.target.value })}
+                    placeholder="e.g. My Mobile, Son, Family Head"
+                    className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-medium text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10.5px] text-slate-400 mt-1 block">
+                    Shown on the emergency call screen so patient knows who is being phoned.
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-slate-300 font-bold text-xs mb-1.5 flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-indigo-400" />
+                    <span>Emergency SOS Alert Email Address *</span>
+                  </label>
+                  <input
+                    type="email" required
+                    value={sosForm.alert_email}
+                    onChange={e => setSosForm({ ...sosForm, alert_email: e.target.value })}
+                    placeholder="e.g. yourname.emergency@gmail.com"
+                    className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="text-[10.5px] text-slate-400 mt-1 block">
+                    Emergency notification emails with timestamp, sensor telemetry and map link will be dispatched to this inbox.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-bold text-xs mb-1.5 flex items-center justify-between">
+                    <span>Auto-Dial Safety Countdown (Seconds)</span>
+                    <span className="font-mono text-red-400 font-bold text-xs">{sosForm.auto_dial_delay_seconds} Seconds</span>
+                  </label>
+                  <input
+                    type="range" min="5" max="30" step="1"
+                    value={sosForm.auto_dial_delay_seconds}
+                    onChange={e => setSosForm({ ...sosForm, auto_dial_delay_seconds: Number(e.target.value) })}
+                    className="w-full accent-red-600 cursor-pointer mt-2"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">
+                    Gives 10 seconds to cancel accidental false touches before dialing your number.
+                  </span>
+                </div>
+              </div>
+
+              {/* Part 1B: Custom SMS Template */}
+              <div className="pt-2">
+                <label className="block text-slate-300 font-bold text-xs mb-1.5 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>Emergency SMS Alert Message Template</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={sosForm.custom_message}
+                  onChange={e => setSosForm({ ...sosForm, custom_message: e.target.value })}
+                  placeholder="Custom SMS text dispatched along with GPS..."
+                  className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-mono focus:ring-2 focus:ring-emerald-500"
+                />
+                <span className="text-[10.5px] text-emerald-400 mt-1 block">
+                  ✓ Automatically appends patient Heart Rate, SpO2, Temperature, and Google Maps GPS link!
+                </span>
+              </div>
+            </div>
+
+            {/* Part 2: Secondary Guardian & Medical Backup Contacts */}
+            <div className="p-5 rounded-2xl bg-slate-800/90 border border-slate-700 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-400" />
+                  <h5 className="font-bold text-sm text-white">2. Secondary Guardian & Backup Medical Contacts</h5>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+                  BACKUP NUMBERS
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-slate-300 text-xs font-semibold mb-1">Secondary Contact Name</label>
+                  <input
+                    type="text"
+                    value={sosForm.secondary_guardian_name}
+                    onChange={e => setSosForm({ ...sosForm, secondary_guardian_name: e.target.value })}
+                    className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-xs font-semibold mb-1">Secondary Phone</label>
+                  <input
+                    type="tel"
+                    value={sosForm.secondary_guardian_number}
+                    onChange={e => setSosForm({ ...sosForm, secondary_guardian_number: e.target.value })}
+                    className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-xs font-semibold mb-1">Doctor Name</label>
+                  <input
+                    type="text"
+                    value={sosForm.doctor_name}
+                    onChange={e => setSosForm({ ...sosForm, doctor_name: e.target.value })}
+                    className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-xs font-semibold mb-1">Doctor Phone</label>
+                  <input
+                    type="tel"
+                    value={sosForm.doctor_phone}
+                    onChange={e => setSosForm({ ...sosForm, doctor_phone: e.target.value })}
+                    className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Part 3: Live Quick Test Buttons */}
+            <div className="p-4 rounded-2xl bg-slate-800/60 border border-slate-700/80">
+              <span className="text-xs font-bold text-slate-300 block mb-2">⚡ Test Emergency Actions with Your Number ({sosForm.primary_sos_number}):</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <a
+                  href={`tel:${sosForm.primary_sos_number}`}
+                  className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Test Call Intent ({sosForm.primary_sos_number})</span>
+                </a>
+
+                <a
+                  href={`sms:${sosForm.primary_sos_number}?body=${encodeURIComponent(sosForm.custom_message + ' Live Location: https://maps.google.com/?q=28.6139,77.2090')}`}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Test SMS Intent (Opens SMS App)</span>
+                </a>
+
+                <a
+                  href={`mailto:${sosForm.alert_email}?subject=TEST%20SMARTHEALTH%20SOS%20ALERT&body=${encodeURIComponent(sosForm.custom_message)}`}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Test Email Alert ({sosForm.alert_email})</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="submit"
+                className="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-sm shadow-xl shadow-red-600/30 flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Emergency SOS Configuration</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* TAB 1: CAREGIVER REMOTE WATCH & DOSE TOKENS CONFIGURATION */}
       {activeTab === 'caregiver' && (

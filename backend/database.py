@@ -17,7 +17,9 @@ class FallbackStore:
             "telemetry": [],
             "alerts": [],
             "sos_config": {
-                "primary_sos_number": "112",
+                "primary_sos_number": "+919811223344",
+                "primary_contact_name": "My Phone (Primary Contact)",
+                "alert_email": "emergency.alert@smarthealth.org",
                 "secondary_guardian_number": "+919811223344",
                 "secondary_guardian_name": "Family Guardian",
                 "ambulance_number": "108",
@@ -25,6 +27,7 @@ class FallbackStore:
                 "doctor_name": "Dr. Sameer Verma",
                 "auto_dial_delay_seconds": 10,
                 "enable_sms_alert": True,
+                "enable_email_alert": True,
                 "custom_message": "EMERGENCY: Patient fell or requires urgent medical attention!"
             },
             "caregiver_config": {

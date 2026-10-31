@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { PhoneCall, ShieldAlert, MapPin, XCircle, Volume2, VolumeX, AlertOctagon, Heart, Activity } from 'lucide-react';
+import { PhoneCall, ShieldAlert, MapPin, XCircle, Volume2, VolumeX, AlertOctagon, Heart, Activity, MessageSquare, Mail, Send } from 'lucide-react';
 import { audioAlarm } from '../utils/audioAlarm';
 
-export function FallSOSModal({ isOpen, onClose, telemetry, emergencyContacts, onSosDispatched, lang, t }) {
+export function FallSOSModal({ isOpen, onClose, telemetry, emergencyContacts, sosConfig, onSosDispatched, lang, t }) {
   const [countdown, setCountdown] = useState(10);
   const [muted, setMuted] = useState(false);
   const [dialTriggered, setDialTriggered] = useState(false);
+  const [smsSentToast, setSmsSentToast] = useState(false);
 
   const primaryContact = emergencyContacts?.find(c => c.is_primary) || emergencyContacts?.[0] || {
-    name: "National Emergency Ambulance",
-    phone: "112"
+    name: sosConfig?.primary_contact_name || "My Emergency Contact",
+    phone: sosConfig?.primary_sos_number || "+919811223344",
+    email: sosConfig?.alert_email || "guardian.care@smarthealth.org"
   };
 
   useEffect(() => {
     if (!isOpen) {
-      setCountdown(10);
+      setCountdown(sosConfig?.auto_dial_delay_seconds || 10);
       setDialTriggered(false);
       audioAlarm.stopSiren();
       return;
@@ -40,21 +42,39 @@ export function FallSOSModal({ isOpen, onClose, telemetry, emergencyContacts, on
       clearInterval(timer);
       audioAlarm.stopSiren();
     };
-  }, [isOpen, muted]);
+  }, [isOpen, muted, sosConfig]);
 
   const triggerDialAction = () => {
     setDialTriggered(true);
     audioAlarm.stopSiren();
 
-    const targetPhone = primaryContact.phone || "112";
+    const targetPhone = primaryContact.phone || sosConfig?.primary_sos_number || "+919811223344";
     console.log(`[SOS] Initiating emergency dial: tel:${targetPhone}`);
 
-    // Trigger direct mobile phone dialer
+    // Trigger direct phone dialer
     window.location.href = `tel:${targetPhone}`;
 
     if (onSosDispatched) {
       onSosDispatched(targetPhone);
     }
+  };
+
+  const triggerSMSAction = () => {
+    const targetPhone = primaryContact.phone || sosConfig?.primary_sos_number || "+919811223344";
+    const hr = telemetry?.heart_rate || 75;
+    const temp = telemetry?.temperature_c || 36.8;
+    const spo2 = telemetry?.spo2 || 98;
+    const lat = telemetry?.latitude || 28.6139;
+    const lng = telemetry?.longitude || 77.2090;
+
+    const customMsg = sosConfig?.custom_message || "EMERGENCY ALERT: Patient triggered SOS!";
+    const smsBody = `${customMsg} Vitals: HR ${hr} BPM, SpO2 ${spo2}%, Temp ${temp}°C. Live Location: https://maps.google.com/?q=${lat},${lng}`;
+
+    setSmsSentToast(true);
+    setTimeout(() => setSmsSentToast(false), 3000);
+
+    // Trigger direct SMS intent on Android & mobile
+    window.location.href = `sms:${targetPhone}?body=${encodeURIComponent(smsBody)}`;
   };
 
   const handleCancel = () => {
@@ -157,22 +177,48 @@ export function FallSOSModal({ isOpen, onClose, telemetry, emergencyContacts, on
         </div>
 
         {/* Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 justify-center">
-          <button
-            onClick={triggerDialAction}
-            className="w-full sm:w-auto flex-1 py-3.5 px-6 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-sm md:text-base shadow-xl flex items-center justify-center gap-2 transition-all"
-          >
-            <PhoneCall className="w-5 h-5 animate-pulse" />
-            {t.dialNow} ({primaryContact.phone})
-          </button>
+        <div className="space-y-2.5">
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 justify-center">
+            {/* Primary Direct Call to user number */}
+            <button
+              onClick={triggerDialAction}
+              className="w-full sm:w-auto flex-1 py-3 px-5 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-sm md:text-base shadow-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <PhoneCall className="w-5 h-5 animate-pulse" />
+              <span>{t.dialNow || 'Call Now'}: {primaryContact.phone}</span>
+            </button>
 
-          <button
-            onClick={handleCancel}
-            className="w-full sm:w-auto py-3.5 px-6 rounded-2xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all"
-          >
-            <XCircle className="w-5 h-5 text-emerald-600" />
-            {t.cancelSos}
-          </button>
+            {/* Direct SMS with Vitals & GPS to user number */}
+            <button
+              onClick={triggerSMSAction}
+              className="w-full sm:w-auto py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-sm shadow-xl flex items-center justify-center gap-2 transition-all cursor-pointer"
+              title="Dispatches direct SMS intent with live coordinates and vitals"
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>{lang === 'hi' ? 'एसएमएस भेजें' : 'Send SMS'}</span>
+            </button>
+          </div>
+
+          {/* Email Alert and Cancel Row */}
+          <div className="flex items-center gap-2.5">
+            <a
+              href={`mailto:${primaryContact.email || 'guardian@smarthealth.org'}?subject=EMERGENCY%20SOS%20ALERT&body=${encodeURIComponent(
+                `🚨 CRITICAL SOS ALERT!\nPatient: ${primaryContact.name}\nLive Vitals: HR ${telemetry?.heart_rate || 75} BPM, SpO2 ${telemetry?.spo2 || 98}%, Temp ${telemetry?.temperature_c || 36.8}°C.\nLive GPS Location: https://maps.google.com/?q=${lat},${lng}\nTarget Dial: ${primaryContact.phone}`
+              )}`}
+              className="py-2.5 px-4 rounded-xl bg-indigo-950 border border-indigo-700 text-indigo-300 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-indigo-900 transition-colors"
+            >
+              <Mail className="w-4 h-4 text-indigo-400" />
+              <span>{lang === 'hi' ? 'ईमेल अलर्ट' : 'Send Email'}</span>
+            </a>
+
+            <button
+              onClick={handleCancel}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <XCircle className="w-4 h-4 text-slate-500" />
+              <span>{t.cancelSos || "I'm OK, Cancel Alert"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Mute Siren Toggle */}

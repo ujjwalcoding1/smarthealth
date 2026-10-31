@@ -252,17 +252,31 @@ def update_caregiver_settings(config: Dict[str, Any]):
 @app.post("/api/sos/trigger")
 async def trigger_emergency_sos(incident: Dict[str, Any]):
     cfg = db.get_sos_config()
-    target_dial = incident.get("dial_number") or cfg.get("primary_sos_number", "112")
+    target_dial = incident.get("dial_number") or cfg.get("primary_sos_number", "+919811223344")
+    target_email = cfg.get("alert_email", "emergency.alert@smarthealth.org")
+    lat = incident.get("latitude", latest_telemetry_dict.get("latitude", 28.6139))
+    lng = incident.get("longitude", latest_telemetry_dict.get("longitude", 77.2090))
+    hr = incident.get("heart_rate", latest_telemetry_dict.get("heart_rate", 75))
+    temp = incident.get("temperature_c", latest_telemetry_dict.get("temperature_c", 36.8))
+
+    sms_text = (
+        f"EMERGENCY SOS ALERT! Patient needs immediate help! "
+        f"Heart Rate: {hr} BPM, Temp: {temp}C. "
+        f"Live GPS Location: https://maps.google.com/?q={lat},{lng}"
+    )
+
     incident_doc = {
         "type": "SOS_DISPATCH",
         "incident_id": f"INC-{int(time.time())}",
-        "patient_name": incident.get("patient_name", "Rajesh Sharma"),
-        "trigger_type": incident.get("trigger_type", "FALL_DETECTION"),
-        "heart_rate": incident.get("heart_rate", latest_telemetry_dict.get("heart_rate")),
-        "temperature_c": incident.get("temperature_c", latest_telemetry_dict.get("temperature_c")),
-        "latitude": incident.get("latitude", latest_telemetry_dict.get("latitude", 28.6139)),
-        "longitude": incident.get("longitude", latest_telemetry_dict.get("longitude", 77.2090)),
+        "patient_name": incident.get("patient_name", "Primary Patient"),
+        "trigger_type": incident.get("trigger_type", "MANUAL_SOS"),
+        "heart_rate": hr,
+        "temperature_c": temp,
+        "latitude": lat,
+        "longitude": lng,
         "dial_number": target_dial,
+        "alert_email": target_email,
+        "sms_text": sms_text,
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
     }
     db.save_alert(incident_doc)
@@ -273,6 +287,8 @@ async def trigger_emergency_sos(incident: Dict[str, Any]):
     return {
         "status": "dispatched",
         "dial_action": f"tel:{target_dial}",
+        "sms_action": f"sms:{target_dial}?body={sms_text}",
+        "target_email": target_email,
         "message": f"Calling emergency number {target_dial}"
     }
 

@@ -38,7 +38,9 @@ class ZoneEvaluation(BaseModel):
     suggested_emergency_number: str = "112"
 
 class SOSConfig(BaseModel):
-    primary_sos_number: str = "112"
+    primary_sos_number: str = "+919811223344"
+    primary_contact_name: str = "My Phone (Primary Contact)"
+    alert_email: str = "emergency.alert@smarthealth.org"
     secondary_guardian_number: str = "+919811223344"
     secondary_guardian_name: str = "Family Guardian"
     ambulance_number: str = "108"
@@ -46,6 +48,7 @@ class SOSConfig(BaseModel):
     doctor_name: str = "Dr. Sameer Verma"
     auto_dial_delay_seconds: int = 10
     enable_sms_alert: bool = True
+    enable_email_alert: bool = True
     custom_message: Optional[str] = "EMERGENCY: Patient needs urgent medical attention!"
 
 class DoctorItem(BaseModel):

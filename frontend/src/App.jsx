@@ -112,14 +112,18 @@ export function App() {
   const [medicines, setMedicines] = useState(DEFAULT_MEDICINES);
   const [govSchemes, setGovSchemes] = useState([]);
   const [sosConfig, setSosConfig] = useState({
-    primary_sos_number: "112",
+    primary_sos_number: "+919811223344",
+    primary_contact_name: "My Phone (Primary Contact)",
+    alert_email: "emergency.alert@smarthealth.org",
     secondary_guardian_number: "+919811223344",
     secondary_guardian_name: "Family Guardian",
     ambulance_number: "108",
     doctor_phone: "+919876543210",
     doctor_name: "Dr. Sameer Verma",
     auto_dial_delay_seconds: 10,
-    enable_sms_alert: true
+    enable_sms_alert: true,
+    enable_email_alert: true,
+    custom_message: "🚨 EMERGENCY ALERT: Patient triggered SOS! Urgent medical assistance required."
   });
   const [alerts, setAlerts] = useState([]);
   const [waterData, setWaterData] = useState({ current_ml: 1600, target_ml: 2500, percentage: 64 });
@@ -535,9 +539,10 @@ export function App() {
             <button
               onClick={() => setIsSosModalOpen(true)}
               className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-red-600/30 transition-transform animate-pulse"
+              title="Dispatches direct SOS call & SMS intent to your phone"
             >
               <ShieldAlert className="w-4 h-4" />
-              <span>SOS ({sosConfig.primary_sos_number || '112'})</span>
+              <span>SOS ({sosConfig.primary_sos_number || '+919811223344'})</span>
             </button>
 
             {/* Language Switch */}
@@ -757,6 +762,8 @@ export function App() {
             govSchemes={govSchemes}
             caregiverConfig={caregiverConfig}
             onUpdateCaregiverConfig={handleUpdateCaregiverConfig}
+            sosConfig={sosConfig}
+            onUpdateSosConfig={handleSaveSOSConfig}
             onAddDoctor={handleAddDoctor}
             onDeleteDoctor={handleDeleteDoctor}
             onAddHospital={handleAddHospital}
@@ -795,9 +802,19 @@ export function App() {
         isOpen={isSosModalOpen}
         onClose={handleCancelSOS}
         telemetry={telemetry}
+        sosConfig={sosConfig}
         emergencyContacts={[
-          { is_primary: true, name: "Primary Emergency Line", phone: sosConfig.primary_sos_number || "112" },
-          { is_primary: false, name: sosConfig.secondary_guardian_name, phone: sosConfig.secondary_guardian_number }
+          {
+            is_primary: true,
+            name: sosConfig.primary_contact_name || "My Emergency Contact",
+            phone: sosConfig.primary_sos_number || "+919811223344",
+            email: sosConfig.alert_email || "emergency.alert@smarthealth.org"
+          },
+          {
+            is_primary: false,
+            name: sosConfig.secondary_guardian_name || "Family Guardian",
+            phone: sosConfig.secondary_guardian_number || "+919811223344"
+          }
         ]}
         onSosDispatched={handleSosDispatched}
         lang={lang}
