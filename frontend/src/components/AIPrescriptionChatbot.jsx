@@ -5,10 +5,16 @@ import {
 } from 'lucide-react';
 
 const DEFAULT_OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY || '';
+const DEFAULT_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
   const [apiKey, setApiKey] = useState(() => {
-    return localStorage.getItem('smarthealth_ai_key') || localStorage.getItem('smarthealth_openai_key') || DEFAULT_OPENAI_KEY;
+    const saved = localStorage.getItem('smarthealth_ai_key');
+    if (saved && saved.startsWith('sk-proj-VZTEM')) {
+      localStorage.setItem('smarthealth_ai_key', DEFAULT_GEMINI_KEY);
+      return DEFAULT_GEMINI_KEY;
+    }
+    return saved || DEFAULT_GEMINI_KEY;
   });
 
   const [showKeyModal, setShowKeyModal] = useState(false);
@@ -19,9 +25,9 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
     {
       sender: 'ai',
       text: lang === 'hi'
-        ? "नमस्ते! मैं आपका स्मार्टहेल्थ एआई मेडिकल कंसल्टेंट हूँ। आप मुझसे किसी भी बीमारी, दवा (खुराक/सावधानियां), लक्षण, डाइट या स्वास्थ्य संबंधी कोई भी तथ्यात्मक सवाल पूछ सकते हैं। मैं आपको बिल्कुल सटीक, वैज्ञानिक और मेडिकल तथ्यों पर आधारित उत्तर दूंगा।"
-        : "Hello! I am your SmartHealth Clinical AI Consultant. Ask me any factual medical questions, disease symptoms, evidence-based treatments, medication dosages, or lifestyle guidance. I analyze your inquiry with clinical precision and live IoT vital telemetry.",
-      source: "SmartHealth Clinical AI"
+        ? "नमस्ते! मैं आपका Google Gemini AI असिस्टेंट हूँ। आप मुझसे विज्ञान, कोडिंग, गणित, इतिहास, सामान्य ज्ञान, या किसी भी बीमारी, लक्षण, दवा की सही खुराक और स्वास्थ्य से जुड़ा कोई भी सवाल पूछ सकते हैं। मैं आपको बिल्कुल सटीक और विस्तृत उत्तर दूंगा।"
+        : "Hello! I am your Google Gemini AI Assistant. You can ask me anything — from science, coding, history, and general knowledge to medical conditions, symptoms, and evidence-based prescriptions. How can I assist you today?",
+      source: "Google Gemini AI (Live)"
     }
   ]);
 
@@ -41,7 +47,6 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
     const trimmed = tempKeyInput.trim();
     setApiKey(trimmed);
     localStorage.setItem('smarthealth_ai_key', trimmed);
-    localStorage.setItem('smarthealth_openai_key', trimmed);
     setKeySavedToast(true);
     setTimeout(() => {
       setKeySavedToast(false);
@@ -54,27 +59,27 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
       {
         sender: 'ai',
         text: lang === 'hi'
-          ? "चैट साफ़ कर दी गई है। अपनी बीमारी, लक्षण, दवा या स्वास्थ्य संबंधी कोई भी सवाल पूछें।"
-          : "Chat history cleared. Feel free to ask any factual questions about illnesses, medications, or wellness.",
-        source: "SmartHealth Clinical AI"
+          ? "चैट साफ़ कर दी गई है। आप मुझसे कोई भी सामान्य ज्ञान, कोडिंग या स्वास्थ्य संबंधी सवाल पूछ सकते हैं।"
+          : "Chat history cleared. Feel free to ask any question on coding, science, general knowledge, or medical health.",
+        source: "Google Gemini AI (Live)"
       }
     ]);
   };
 
   const sampleQueries = lang === 'hi' ? [
+    "क्वांटम कंप्यूटिंग क्या है और यह कैसे काम करती है?",
     "ब्लड प्रेशर सामान्य कितना होना चाहिए और इसे कैसे नियंत्रित करें?",
+    "पायथन में पैलिंड्रोम चेक करने का कोड लिखकर समझाएं",
     "डायबिटीज में फास्टिंग और खाने के बाद शुगर का सही स्तर क्या है?",
-    "पैरासिटामोल और ब्रूफेन में क्या अंतर है और कौन सी सुरक्षित है?",
-    "डेंगू में प्लेटलेट्स कितनी होनी चाहिए और क्या सावधानियां बरतें?",
-    "खराब कोलेस्ट्रॉल (LDL) कम करने के वैज्ञानिक उपाय बताएं",
-    "थायराइड (TSH) बढ़ने के लक्षण और दवा लेने का सही तरीका"
+    "ताजमहल का इतिहास और निर्माण कब हुआ था?",
+    "डेंगू में प्लेटलेट्स कितनी होनी चाहिए और क्या सावधानियां बरतें?"
   ] : [
+    "Explain quantum computing and how qubits work",
     "What is normal blood pressure and evidence-based ways to reduce it?",
+    "Write a Python function to check if a string is palindrome",
     "What are normal fasting and postprandial blood sugar targets?",
-    "What is the clinical difference between Paracetamol and Ibuprofen?",
-    "Normal platelet count in Dengue and essential precautions?",
-    "Evidence-based ways to lower LDL cholesterol and triglycerides",
-    "Symptoms of high TSH (Hypothyroidism) and correct Thyronorm timing"
+    "Who was Albert Einstein and what did he discover?",
+    "Normal platelet count in Dengue and essential precautions"
   ];
 
   // Helper: Detect Pure Greeting & Chit-Chat
@@ -86,68 +91,77 @@ export function AIPrescriptionChatbot({ telemetry, apiBaseUrl, lang }) {
       'acidity', 'gas', 'headache', 'sar dard', 'sir dard', 'bp', 'sugar', 'diabetes',
       'diarrhea', 'loose motion', 'dast', 'pain', 'dard', 'vomit', 'ulti', 'asthma', 'allergy',
       'chest', 'seene', 'heart', 'breath', 'saans', 'medicine', 'dawa', 'tablet', 'symptom',
-      'cholesterol', 'uric acid', 'gout', 'thyroid', 'liver', 'kidney'
+      'cholesterol', 'uric acid', 'gout', 'thyroid', 'liver', 'kidney', 'code', 'python', 'what', 'who', 'how', 'kya'
     ];
     if (diseaseWords.some(w => clean.includes(w))) return false;
     const greetingRegex = /^(?:hello|hi|hey|hlo|helo|hy|namaste|namaskar|pranam|good\s+(?:morning|evening|afternoon|night)|how\s+are\s+you|kaise\s+ho|who\s+are\s+you|thank\s+you|thanks|ok|okay|bye|goodbye)\b/i;
     return greetingRegex.test(clean);
   };
 
-  // Direct Google Gemini Free API Caller
+  // Direct Google Gemini Universal API Caller
   const callDirectGemini = async (userText, vitals, gKey) => {
     const hr = vitals?.heart_rate || 75;
     const temp = vitals?.temperature_c || 36.8;
     const spo2 = vitals?.spo2 || 98;
 
-    const systemPrompt = `You are SmartHealth Clinical AI Doctor, an expert clinical consultant and medical communicator just like ChatGPT.
-The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 temperature sensor, MPU6050 accelerometer).
-Provide thorough, factual, evidence-based, empathetic medical explanations based on established clinical guidelines (WHO, ADA, ACC/AHA, ICMR).
+    const systemPrompt = `You are SmartHealth Gemini AI, an intelligent, versatile, and highly capable AI assistant powered directly by Google Gemini.
+You fulfill two essential roles:
+1. UNIVERSAL AI ASSISTANT: If the user asks ANY general question (science, technology, coding, mathematics, history, geography, creative writing, facts, explanations, or general conversation), answer thoroughly, accurately, beautifully, and conversationally just like Google Gemini.
+2. MEDICAL & CLINICAL CONSULTANT: If the user asks health, medical, disease, symptom, medication, or wellness questions, provide evidence-based clinical analysis, evaluate the patient's live IoT vitals (Heart rate, temperature, SpO2) when available, and provide safe actionable recommendations and medication facts when appropriate.
 Answer in the requested language (${lang === 'hi' ? 'Hindi' : 'English'}).
-GREETING RULE: If the user simply says 'hello', 'hi', 'hey', 'namaste', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true and leave 'prescribed_medicines': [].
-You MUST return ONLY valid JSON matching this exact structure without markdown code blocks:
+GREETING RULE: If the user simply says 'hello', 'hi', 'hey', 'namaste', etc., reply warmly starting with 'Hello Sir! How can I assist you today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true and leave 'prescribed_medicines': [].
+You MUST return ONLY valid JSON matching this exact structure without markdown code fences:
 {
   "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",
   "is_greeting": false,
-  "condition_diagnosed": "Title of Condition / Clinical Topic",
-  "clinical_assessment": "Comprehensive, factual, paragraph-by-paragraph medical explanation answering the question thoroughly with biological mechanisms, diagnostic reference ranges, and vitals evaluation",
+  "is_medical": true | false,
+  "condition_diagnosed": "Title of topic or inquiry",
+  "clinical_assessment": "Comprehensive, well-structured, clear explanation answering the user's inquiry thoroughly with formatting, code snippets, or paragraphs as needed",
   "prescribed_medicines": [
     {
-      "name": "Medicine Name (Brand and Generic)",
-      "composition": "Active chemical composition",
-      "dosage": "Precise dosage (e.g. 1 tab twice daily after food)",
-      "duration": "Duration",
-      "purpose": "Why this medicine is prescribed",
-      "caution": "Precautions and contraindications"
+      "name": "Medicine Name",
+      "dosage": "Dose",
+      "purpose": "Purpose",
+      "caution": "Caution"
     }
   ],
-  "dietary_lifestyle": ["Specific actionable recovery advice", "Dietary recommendation", "Fluid guidance"],
-  "red_flags": "Specific warning symptoms that require immediate hospitalization or emergency clinic visit",
-  "emergency_actions": ["Action 1", "Action 2"]
-}`;
+  "dietary_lifestyle": ["Tip 1", "Tip 2"],
+  "red_flags": "Warning signs if medical, or empty string",
+  "emergency_actions": ["Emergency step if applicable"]
+}
+Note: For non-medical questions, set 'is_medical': false, leave 'prescribed_medicines': [], 'dietary_lifestyle': [], and 'red_flags': ''.`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${gKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${systemPrompt}\n\nPatient Query: ${userText}\nLive Vitals: HR ${hr} BPM, Temp ${temp}°C, SpO2 ${spo2}%\nLanguage: ${lang === 'hi' ? 'Hindi' : 'English'}` }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1000,
-          responseMimeType: "application/json"
-        }
-      })
-    });
+    const candidateModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+    for (const model of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${gKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: `System Instruction: ${systemPrompt}\n\nUser Question: ${userText}\nLive Vitals: HR ${hr} BPM, Temp ${temp}°C, SpO2 ${spo2}%\nLanguage: ${lang === 'hi' ? 'Hindi' : 'English'}` }]
+            }],
+            generationConfig: {
+              temperature: 0.4,
+              maxOutputTokens: 2048,
+              responseMimeType: "application/json"
+            }
+          })
+        });
 
-    if (!res.ok) throw new Error("Gemini API error");
-    const resJson = await res.json();
-    let rawText = resJson.candidates[0].content.parts[0].text.trim();
-    rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-    const parsed = JSON.parse(rawText);
-    parsed.source = "Google Gemini 1.5 Flash (Live AI)";
-    return parsed;
+        if (!res.ok) continue;
+        const resJson = await res.json();
+        let rawText = resJson?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+        rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+        const parsed = JSON.parse(rawText);
+        parsed.source = "Google Gemini AI (Live)";
+        return parsed;
+      } catch (e) {
+        continue;
+      }
+    }
+    throw new Error("Gemini API error on all models");
   };
 
   // Direct Browser OpenAI Caller
@@ -455,10 +469,10 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
       // 3. Direct browser calling if backend is offline
       if (!data && apiKey) {
-        if (apiKey.startsWith("AIza")) {
-          data = await callDirectGemini(userText, telemetry, apiKey);
-        } else if (apiKey.startsWith("sk-")) {
+        if (apiKey.startsWith("sk-")) {
           data = await callDirectOpenAI(userText, telemetry, apiKey);
+        } else {
+          data = await callDirectGemini(userText, telemetry, apiKey);
         }
       }
 
@@ -466,8 +480,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
         setMessages(prev => [...prev, {
           sender: 'ai',
           structured: data,
-          text: data.clinical_assessment || (lang === 'hi' ? "चिकित्सीय मूल्यांकन:" : "Clinical recommendations:"),
-          source: data.source || "SmartHealth Clinical Medical Intelligence",
+          text: data.clinical_assessment || (lang === 'hi' ? "उत्तर:" : "Answer:"),
+          source: data.source || "Google Gemini AI (Live)",
           openai_notice: data.openai_notice
         }]);
       } else {
@@ -491,32 +505,66 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
     }
   };
 
-  // Formatted Text Renderer (Handles bolding and paragraph breaks cleanly)
+  // Formatted Text & Code Block Renderer (Handles code blocks, bolding, and bullet points)
   const renderFormattedText = (content) => {
     if (!content) return null;
-    const paragraphs = content.split('\n\n');
-    return paragraphs.map((para, pi) => {
-      const lines = para.split('\n');
-      return (
-        <div key={pi} className="mb-2 leading-relaxed">
-          {lines.map((line, li) => {
-            const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*');
-            const parts = line.split(/(\*\*.*?\*\*)/g);
-            const formattedLine = parts.map((part, idx) => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                return <strong key={idx} className="font-extrabold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
-              }
-              return part;
-            });
 
-            return (
-              <div key={li} className={isBullet ? "flex items-start gap-1.5 ml-2 my-1" : "my-0.5"}>
-                {formattedLine}
-              </div>
-            );
-          })}
-        </div>
-      );
+    // Check for markdown code blocks (```language ... ```)
+    const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+    const segments = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+      }
+      segments.push({ type: 'code', lang: match[1] || 'code', code: match[2].trim() });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < content.length) {
+      segments.push({ type: 'text', content: content.slice(lastIndex) });
+    }
+
+    return segments.map((seg, sIdx) => {
+      if (seg.type === 'code') {
+        return (
+          <div key={sIdx} className="my-2.5 rounded-xl overflow-hidden border border-slate-700 bg-slate-950 text-slate-100 shadow-md">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[10px] font-mono text-slate-400">
+              <span className="font-semibold text-sky-400">{seg.lang || 'code'}</span>
+              <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Google Gemini Code</span>
+            </div>
+            <pre className="p-3 text-[11px] sm:text-xs font-mono overflow-x-auto text-emerald-300 leading-relaxed whitespace-pre">
+              <code>{seg.code}</code>
+            </pre>
+          </div>
+        );
+      }
+
+      const paragraphs = seg.content.split('\n\n');
+      return paragraphs.map((para, pi) => {
+        const lines = para.split('\n');
+        return (
+          <div key={`${sIdx}-${pi}`} className="mb-2 leading-relaxed">
+            {lines.map((line, li) => {
+              const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*');
+              const parts = line.split(/(\*\*.*?\*\*)/g);
+              const formattedLine = parts.map((part, idx) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <strong key={idx} className="font-extrabold text-slate-900 dark:text-slate-100">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+              });
+
+              return (
+                <div key={li} className={isBullet ? "flex items-start gap-1.5 ml-2 my-1" : "my-0.5"}>
+                  {formattedLine}
+                </div>
+              );
+            })}
+          </div>
+        );
+      });
     });
   };
 
@@ -531,15 +579,15 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
-                {lang === 'hi' ? 'एआई चिकित्सक एवं प्रिस्क्रिप्शन चैटबॉट' : 'AI Doctor & Clinical Prescription Chatbot'}
+                {lang === 'hi' ? 'स्मार्टहेल्थ जेमिनी एआई चैटबॉट' : 'SmartHealth Google Gemini AI Chatbot'}
               </h3>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Factual Clinical Intelligence</span>
+                <span>Google Gemini 2.5 Live</span>
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              {lang === 'hi' ? 'तथ्यों और वैज्ञानिक मेडिकल दिशानिर्देशों पर आधारित सटीक उत्तर' : 'Evidence-based medical answers, accurate dosages, and physiological facts.'}
+              {lang === 'hi' ? 'सामान्य ज्ञान, कोडिंग, विज्ञान एवं क्लिनिकल मेडिकल उत्तर — पावर्ड बाय Google Gemini' : 'Universal Knowledge, Coding, Science & Clinical Medicine — Powered by Google Gemini.'}
             </p>
           </div>
         </div>
@@ -613,8 +661,8 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
                 </div>
               )}
 
-              {/* Structured Clinical Diagnosis Card (Only shown for real health queries with medicines or advice, not greetings) */}
-              {msg.structured && !msg.structured.is_greeting && msg.structured.condition_diagnosed !== 'Conversational Greeting' && (msg.structured.prescribed_medicines?.length > 0 || msg.structured.dietary_lifestyle?.length > 0 || msg.structured.red_flags) && (
+              {/* Structured Clinical Diagnosis Card (Only shown for real health queries with medicines or advice, not general/coding/greetings) */}
+              {msg.structured && msg.structured.is_medical !== false && !msg.structured.is_greeting && msg.structured.condition_diagnosed !== 'Conversational Greeting' && (msg.structured.prescribed_medicines?.length > 0 || msg.structured.dietary_lifestyle?.length > 0 || msg.structured.red_flags) && (
                 <div className="space-y-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <span className="font-extrabold text-indigo-700 dark:text-indigo-400 text-xs sm:text-sm">
@@ -708,7 +756,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
         {loading && (
           <div className="flex items-center gap-2 text-slate-500 text-xs italic p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl w-fit">
             <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-            <span>AI Doctor is synthesizing factual clinical reasoning...</span>
+            <span>Google Gemini AI is thinking and formulating factual response...</span>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -733,7 +781,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={lang === 'hi' ? 'कोई भी मेडिकल सवाल पूछें (जैसे: बीपी कितना होना चाहिए, शुगर कम करने के उपाय)...' : 'Ask any factual medical question (e.g. normal BP, lowering cholesterol, Paracetamol vs Ibuprofen)...'}
+          placeholder={lang === 'hi' ? 'Google Gemini से कोई भी सवाल पूछें (मेडिकल, कोडिंग, साइंस, इतिहास, सामान्य ज्ञान)...' : 'Ask Google Gemini anything (Medical, Coding, Science, History, General Knowledge)...'}
           className="flex-1 py-2.5 px-4 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
         />
         <button
@@ -742,7 +790,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
           className="py-2.5 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all shadow-md active:scale-95"
         >
           <Send className="w-4 h-4" />
-          <span>{lang === 'hi' ? 'पूछें' : 'Consult'}</span>
+          <span>{lang === 'hi' ? 'पूछें' : 'Ask'}</span>
         </button>
       </form>
 
@@ -759,7 +807,7 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
                   <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
                     AI Key Settings
                   </h3>
-                  <p className="text-xs text-slate-500">Supports OpenAI (GPT-4o) & Google Gemini (Free)</p>
+                  <p className="text-xs text-slate-500">Google Gemini Live & OpenAI API Key Configuration</p>
                 </div>
               </div>
               <button
@@ -772,13 +820,13 @@ You MUST return ONLY valid JSON matching this exact structure without markdown c
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Enter API Key (OpenAI `sk-...` OR Google Gemini `AIza...`):
+                Connected API Key (Google Gemini `AQ...` / `AIza...` OR OpenAI `sk-...`):
               </label>
               <input
                 type="text"
                 value={tempKeyInput}
                 onChange={(e) => setTempKeyInput(e.target.value)}
-                placeholder="sk-proj-... OR AIzaSy..."
+                placeholder="AQ.Ab8... OR AIzaSy... OR sk-proj-..."
                 className="w-full font-mono text-xs py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>

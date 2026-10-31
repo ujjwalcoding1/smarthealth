@@ -17,6 +17,7 @@ load_dotenv()
 DEFAULT_OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 DEFAULT_GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 # =========================================================================
 # COMPREHENSIVE CLINICAL MEDICAL KNOWLEDGE BASE & SCIENTIFIC ONCOLOGY
@@ -602,14 +603,15 @@ except ImportError:
 FACTUAL_MEDICAL_KNOWLEDGE.update(EXPANDED_KNOWLEDGE)
 
 # =========================================================================
-# GOOGLE GEMINI 1.5/2.0 FLASH INFERENCE ENGINE (100% FREE TIER READY)
+# GOOGLE GEMINI UNIVERSAL & CLINICAL INFERENCE ENGINE (LIVE AI)
 # =========================================================================
 def call_gemini_api(query_text: str, vitals: Dict[str, Any], lang: str, gemini_key: str) -> Optional[Dict[str, Any]]:
     """
-    Calls Google Gemini 1.5 Flash API with JSON mode.
-    Generates factual, evidence-based clinical reasoning.
+    Calls Google Gemini API with JSON mode.
+    Handles ANY type of question (general knowledge, coding, science, everyday chat)
+    as well as deep evidence-based medical and clinical prescriptions.
     """
-    if not gemini_key or len(gemini_key) < 20:
+    if not gemini_key or len(gemini_key) < 15:
         return None
 
     hr = vitals.get("heart_rate", 75)
@@ -617,65 +619,70 @@ def call_gemini_api(query_text: str, vitals: Dict[str, Any], lang: str, gemini_k
     spo2 = vitals.get("spo2", 98)
 
     system_instruction = (
-        "You are SmartHealth Clinical AI Doctor, an expert clinical consultant and medical communicator just like ChatGPT. "
-        "The patient is connected to live IoT sensors (MAX30102 pulse oximeter, DS18B20 temperature sensor, MPU6050 accelerometer, NEO-6M GPS). "
-        "Provide thorough, factual, evidence-based, empathetic medical explanations based on established clinical guidelines (WHO, ADA, ACC/AHA, ICMR). "
-        f"Answer in the requested language ({'Hindi' if lang == 'hi' else 'English'}). "
-        "GREETING RULE: If the user simply says 'hello', 'hi', 'hey', 'namaste', 'how are you', etc., reply warmly as a polite doctor starting with 'Hello Sir! How can I assist you with your health today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true and leave 'prescribed_medicines': []. "
-        "You MUST return ONLY valid JSON matching this exact structure without markdown fences:\n"
+        "You are SmartHealth Gemini AI, an intelligent, versatile, and highly capable AI assistant powered directly by Google Gemini. "
+        "You fulfill two essential roles:\n"
+        "1. UNIVERSAL AI ASSISTANT: If the user asks ANY general question (science, technology, coding, mathematics, history, geography, creative writing, facts, explanations, or general conversation), answer thoroughly, accurately, beautifully, and conversationally just like Google Gemini.\n"
+        "2. MEDICAL & CLINICAL CONSULTANT: If the user asks health, medical, disease, symptom, medication, or wellness questions, provide evidence-based clinical analysis, evaluate the patient's live IoT vitals (Heart rate, temperature, SpO2) when available, and provide safe actionable recommendations and medication facts when appropriate.\n"
+        f"Answer in the requested language ({'Hindi' if lang == 'hi' else 'English'}).\n"
+        "GREETING RULE: If the user simply says 'hello', 'hi', 'hey', 'namaste', etc., reply warmly starting with 'Hello Sir! How can I assist you today?' (or 'नमस्ते सर!' in Hindi). Set 'is_greeting': true and leave 'prescribed_medicines': [].\n"
+        "You MUST return ONLY valid JSON matching this exact structure without markdown code fences:\n"
         "{\n"
         '  "urgency": "NORMAL & STABLE" | "MODERATE / CAUTION" | "🚨 CRITICAL EMERGENCY",\n'
         '  "is_greeting": false,\n'
-        '  "condition_diagnosed": "Title of Condition / Clinical Topic",\n'
-        '  "clinical_assessment": "Comprehensive, accurate, paragraph-by-paragraph medical explanation answering the question thoroughly with physiological mechanisms, diagnostic ranges, and vitals evaluation",\n'
+        '  "is_medical": true | false,\n'
+        '  "condition_diagnosed": "Title of topic or inquiry",\n'
+        '  "clinical_assessment": "Comprehensive, well-structured, clear explanation answering the user\'s inquiry thoroughly with formatting, code snippets, or paragraphs as needed",\n'
         '  "prescribed_medicines": [\n'
         '    {\n'
-        '      "name": "Medicine Name (Brand and Generic)",\n'
-        '      "composition": "Active chemical composition",\n'
-        '      "dosage": "Precise dosage (e.g. 1 tab twice daily after food)",\n'
-        '      "duration": "Duration",\n'
-        '      "purpose": "Why this medicine is prescribed",\n'
-        '      "caution": "Precautions and contraindications"\n'
+        '      "name": "Medicine Name",\n'
+        '      "dosage": "Dose",\n'
+        '      "purpose": "Purpose",\n'
+        '      "caution": "Caution"\n'
         '    }\n'
         '  ],\n'
-        '  "dietary_lifestyle": ["Actionable scientific dietary tip", "Hydration/lifestyle rule"],\n'
-        '  "red_flags": "Warning signs requiring emergency hospitalization",\n'
+        '  "dietary_lifestyle": ["Tip 1", "Tip 2"],\n'
+        '  "red_flags": "Warning signs if medical, or empty string",\n'
         '  "emergency_actions": ["Emergency step if applicable"]\n'
-        "}"
+        "}\n"
+        "Note: For non-medical questions, set 'is_medical': false, leave 'prescribed_medicines': [], 'dietary_lifestyle': [], and 'red_flags': ''."
     )
 
     user_prompt = (
-        f"System Instruction: {system_instruction}\n\n"
-        f"Patient Query: {query_text}\n"
-        f"Live Sensor Vitals: Heart Rate: {hr} BPM, Body Temperature: {temp}°C, SpO2: {spo2}%.\n"
+        f"User Inquiry: {query_text}\n"
+        f"Live IoT Telemetry: Heart Rate: {hr} BPM, Body Temperature: {temp}°C, SpO2: {spo2}%.\n"
         f"Language: {'Hindi' if lang == 'hi' else 'English'}"
     )
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-    headers = {"Content-Type": "application/json"}
-    payload = json.dumps({
-        "contents": [{"parts": [{"text": user_prompt}]}],
-        "generationConfig": {
-            "temperature": 0.3,
-            "maxOutputTokens": 1000,
-            "responseMimeType": "application/json"
-        }
-    }).encode("utf-8")
+    candidate_models = ["gemini-flash-lite-latest", "gemini-flash-latest"]
+    for model_name in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+        headers = {"Content-Type": "application/json"}
+        payload = json.dumps({
+            "contents": [{"parts": [{"text": f"System Instruction: {system_instruction}\n\n{user_prompt}"}]}],
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 2048,
+                "responseMimeType": "application/json"
+            }
+        }).encode("utf-8")
 
-    req = urllib.request.Request(url, data=payload, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=12) as response:
-            res_json = json.loads(response.read().decode("utf-8"))
-            raw_text = res_json["candidates"][0]["content"]["parts"][0]["text"].strip()
-            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
-            raw_text = re.sub(r"\s*```$", "", raw_text)
-            parsed = json.loads(raw_text)
-            parsed["source"] = "Google Gemini 1.5 Flash (Active)"
-            parsed["api_connected"] = True
-            parsed["vitals_considered"] = {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
-            return parsed
-    except Exception as e:
-        return None
+        req = urllib.request.Request(url, data=payload, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=14) as response:
+                res_json = json.loads(response.read().decode("utf-8"))
+                raw_text = res_json["candidates"][0]["content"]["parts"][0]["text"].strip()
+                raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+                raw_text = re.sub(r"\s*```$", "", raw_text)
+                parsed = json.loads(raw_text)
+                parsed["source"] = "Google Gemini AI (Live)"
+                parsed["api_connected"] = True
+                parsed["vitals_considered"] = {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
+                return parsed
+        except urllib.error.HTTPError as e:
+            continue
+        except Exception as e:
+            continue
+    return None
 
 # =========================================================================
 # OPENAI CLOUD INFERENCE ENGINE
@@ -853,8 +860,9 @@ def analyze_and_prescribe(
             "vitals_considered": {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
         }
 
-    # 3. Try Google Gemini API if Gemini Key is available
-    gemini_key = api_key if (api_key and api_key.startswith("AIza")) else DEFAULT_GEMINI_KEY
+    # 3. Try Google Gemini API (Universal AI + Clinical Prescriber)
+    is_openai = api_key and api_key.startswith("sk-")
+    gemini_key = api_key if (api_key and not is_openai and len(api_key) > 15) else DEFAULT_GEMINI_KEY
     if gemini_key:
         gemini_res = call_gemini_api(query_text, vitals, lang, gemini_key)
         if gemini_res and not gemini_res.get("_error"):
