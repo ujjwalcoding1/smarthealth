@@ -354,8 +354,11 @@ export function App() {
           device_id: telemetry.device_id,
           trigger_type: "FALL_DETECTION",
           dial_number: dialNumber || sosConfig.primary_sos_number,
+          alert_email: sosConfig.alert_email,
+          patient_name: sosConfig.primary_contact_name || "Primary Patient",
           heart_rate: telemetry.heart_rate,
           temperature_c: telemetry.temperature_c,
+          acceleration_g: telemetry.acceleration_g,
           latitude: telemetry.latitude,
           longitude: telemetry.longitude
         })

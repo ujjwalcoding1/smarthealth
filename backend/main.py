@@ -3,6 +3,7 @@ import json
 import os
 import time
 from typing import List, Dict, Any, Optional
+import httpx
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -253,25 +254,29 @@ def update_caregiver_settings(config: Dict[str, Any]):
 async def trigger_emergency_sos(incident: Dict[str, Any]):
     cfg = db.get_sos_config()
     target_dial = incident.get("dial_number") or cfg.get("primary_sos_number", "+919811223344")
-    target_email = cfg.get("alert_email", "emergency.alert@smarthealth.org")
+    target_email = incident.get("alert_email") or cfg.get("alert_email", "emergency.alert@smarthealth.org")
     lat = incident.get("latitude", latest_telemetry_dict.get("latitude", 28.6139))
     lng = incident.get("longitude", latest_telemetry_dict.get("longitude", 77.2090))
     hr = incident.get("heart_rate", latest_telemetry_dict.get("heart_rate", 75))
     temp = incident.get("temperature_c", latest_telemetry_dict.get("temperature_c", 36.8))
+    g_force = incident.get("acceleration_g", latest_telemetry_dict.get("acceleration_g", 2.8))
+    patient = incident.get("patient_name") or cfg.get("primary_contact_name", "Primary Patient")
 
+    custom_prefix = cfg.get("custom_message") or "EMERGENCY SOS ALERT! Patient needs immediate help!"
     sms_text = (
-        f"EMERGENCY SOS ALERT! Patient needs immediate help! "
-        f"Heart Rate: {hr} BPM, Temp: {temp}C. "
+        f"{custom_prefix} "
+        f"Vitals: HR {hr} BPM, Temp: {temp}C, G-Force: {g_force}g. "
         f"Live GPS Location: https://maps.google.com/?q={lat},{lng}"
     )
 
     incident_doc = {
         "type": "SOS_DISPATCH",
         "incident_id": f"INC-{int(time.time())}",
-        "patient_name": incident.get("patient_name", "Primary Patient"),
-        "trigger_type": incident.get("trigger_type", "MANUAL_SOS"),
+        "patient_name": patient,
+        "trigger_type": incident.get("trigger_type", "FALL_DETECTION"),
         "heart_rate": hr,
         "temperature_c": temp,
+        "acceleration_g": g_force,
         "latitude": lat,
         "longitude": lng,
         "dial_number": target_dial,
@@ -284,12 +289,41 @@ async def trigger_emergency_sos(incident: Dict[str, Any]):
         "type": "SOS_ALERT",
         "incident": incident_doc
     })
+
+    # Direct automated email dispatch via FormSubmit.co
+    email_dispatched = False
+    if target_email and "@" in target_email:
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(
+                    f"https://formsubmit.co/ajax/{target_email}",
+                    json={
+                        "_subject": f"🚨 FALL DETECTED! SOS ACTIVE: Emergency Alert for {patient}",
+                        "_template": "table",
+                        "_captcha": "false",
+                        "Alert_Type": "FALL DETECTED! SOS ACTIVE",
+                        "Patient_Name": patient,
+                        "Heart_Rate_BPM": f"{hr} BPM",
+                        "Body_Temperature": f"{temp} °C",
+                        "Impact_Force": f"{g_force} g",
+                        "Emergency_Phone": target_dial,
+                        "Registered_SOS_Email": target_email,
+                        "Live_Google_Maps": f"https://maps.google.com/?q={lat},{lng}",
+                        "SMS_Alert_Message": sms_text,
+                        "Dispatched_At": time.strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                )
+                email_dispatched = (resp.status_code == 200)
+        except Exception as e:
+            print(f"[SOS EMAIL WARNING] FormSubmit background dispatch error: {e}")
+
     return {
         "status": "dispatched",
         "dial_action": f"tel:{target_dial}",
         "sms_action": f"sms:{target_dial}?body={sms_text}",
         "target_email": target_email,
-        "message": f"Calling emergency number {target_dial}"
+        "email_dispatched": email_dispatched,
+        "message": f"Alert SMS dispatched to email {target_email} and call target {target_dial}"
     }
 
 @app.post("/api/sos/cancel")
