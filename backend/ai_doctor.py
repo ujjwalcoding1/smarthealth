@@ -593,6 +593,14 @@ FACTUAL_MEDICAL_KNOWLEDGE = {
     }
 }
 
+try:
+    from backend.clinical_knowledge import EXPANDED_KNOWLEDGE, synthesize_dynamic_medical_response
+except ImportError:
+    from clinical_knowledge import EXPANDED_KNOWLEDGE, synthesize_dynamic_medical_response
+
+# Merge all 40+ clinical conditions into main medical knowledge repository
+FACTUAL_MEDICAL_KNOWLEDGE.update(EXPANDED_KNOWLEDGE)
+
 # =========================================================================
 # GOOGLE GEMINI 1.5/2.0 FLASH INFERENCE ENGINE (100% FREE TIER READY)
 # =========================================================================
@@ -853,22 +861,38 @@ def analyze_and_prescribe(
             return gemini_res
 
     # 4. Try Calling OpenAI GPT-4o with the user's API Key
+    openai_quota_notice = None
     openai_res = call_openai_gpt(query_text, vitals, lang, api_key)
-    if openai_res and not openai_res.get("_error"):
-        return openai_res
+    if openai_res:
+        if not openai_res.get("_error"):
+            return openai_res
+        if openai_res.get("quota_exhausted"):
+            openai_quota_notice = (
+                "⚠️ आपकी OpenAI API Key में platform.openai.com पर $0.00 बैलेंस (क्रेडिट समाप्त) है। लाइव OpenAI मॉडल के लिए platform.openai.com पर न्यूनतम $5 क्रेडिट जोड़ें, या Google AI Studio (aistudio.google.com) से 100% मुफ़्त Gemini Key प्राप्त कर [AI Key] में सेव करें। नीचे आपके प्रश्न का उत्तर हमारे क्लीनिकल मेडिकल रीज़निंग इंजन द्वारा तैयार किया गया है।"
+                if lang == "hi" else
+                "⚠️ Notice: Your OpenAI API Key has $0.00 credits remaining on platform.openai.com. OpenAI requires prepaid credits ($5 min) to process live GPT-4o queries. Please add credits at platform.openai.com/settings/organization/billing or switch to a 100% Free Google Gemini API Key from aistudio.google.com. Your inquiry below has been tailored by our Clinical Medical Reasoning Engine."
+            )
 
-    # 5. Check Deep Clinical Medical Knowledge Base (Comprehensive Factual Matching)
+    # 5. Check if query is a specific situational/dietary inquiry requiring dynamic synthesis
+    is_specific_situational = (
+        any(k in text for k in ["dinner", "breakfast", "lunch", "kya khaye", "diet for", "parhez", "khana"]) or
+        (("milk" in text or "doodh" in text) and ("fever" in text or "bukhar" in text or "cold" in text or "cough" in text)) or
+        (("eye" in text or "aankh" in text) and ("screen" in text or "mobile" in text or "computer" in text)) or
+        (("knee" in text or "ghutna" in text or "joint" in text) and ("exercise" in text or "walk" in text or "kasrat" in text)) or
+        (any(k in text for k in ["bachha", "bachhe", "baby", "child"]) and any(k in text for k in ["fever", "bukhar", "dawa", "khana"]))
+    )
+
     matched_topic = None
+    if not is_specific_situational:
+        # Check paracetamol vs ibuprofen cross-match
+        if ("paracetamol" in text or "dolo" in text or "crocin" in text) and ("ibuprofen" in text or "brufen" in text or "combiflam" in text):
+            matched_topic = FACTUAL_MEDICAL_KNOWLEDGE.get("paracetamol_vs_ibuprofen")
 
-    # Check paracetamol vs ibuprofen cross-match
-    if ("paracetamol" in text or "dolo" in text or "crocin" in text) and ("ibuprofen" in text or "brufen" in text or "combiflam" in text):
-        matched_topic = FACTUAL_MEDICAL_KNOWLEDGE.get("paracetamol_vs_ibuprofen")
-
-    if not matched_topic:
-        for topic_id, data in FACTUAL_MEDICAL_KNOWLEDGE.items():
-            if any(kw in text for kw in data["keywords"]):
-                matched_topic = data
-                break
+        if not matched_topic:
+            for topic_id, data in FACTUAL_MEDICAL_KNOWLEDGE.items():
+                if any(kw in text for kw in data.get("keywords", [])):
+                    matched_topic = data
+                    break
 
     if matched_topic:
         facts_text = matched_topic["scientific_facts_hi"] if lang == "hi" else matched_topic["scientific_facts"]
@@ -879,7 +903,7 @@ def analyze_and_prescribe(
         )
         full_assessment = facts_text + vitals_eval
 
-        return {
+        result = {
             "urgency": "MODERATE / CLINICAL TRIAGE",
             "condition_diagnosed": matched_topic["condition"],
             "clinical_assessment": full_assessment,
@@ -894,42 +918,12 @@ def analyze_and_prescribe(
             "api_connected": True,
             "vitals_considered": {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
         }
+        if openai_quota_notice:
+            result["openai_notice"] = openai_quota_notice
+        return result
 
-    # 6. Deep Multi-Dimensional Clinical Reasoning for Open Inquiries
-    open_assessment = (
-        f"नैदानिक विश्लेषण '{query_text}':\n"
-        f"स्वास्थ्य विज्ञान और नैदानिक दिशानिर्देशों के अनुसार, शरीर का स्वास्थ्य मुख्य रूप से चार स्तंभों पर निर्भर करता है: "
-        f"उचित जलयोजन (35 मिली/किग्रा वजन), संतुलित पोषण (कम सोडियम, फाइबर युक्त), नियमित शारीरिक गतिविधि (150 मिनट/सप्ताह), और 7-8 घंटे की गहरी नींद।\n\n"
-        f"📊 आपके लाइव IoT सेंसर आंकड़े:\n"
-        f"• हृदय गति (Heart Rate): {hr} BPM ({'सामान्य व स्वस्थ' if 60 <= hr <= 100 else 'समीक्षा आवश्यक'})\n"
-        f"• शारीरिक तापमान (Temperature): {temp}°C ({'सामान्य' if 36.0 <= temp <= 37.3 else 'हल्का बढ़ा हुआ'})\n"
-        f"• ऑक्सीजन स्तर (SpO2): {spo2}% ({'आदर्श सेचुरेशन' if spo2 >= 95 else 'ऑक्सीजन पर ध्यान दें'})\n\n"
-        f"यदि आप किसी विशिष्ट बीमारी (जैसे बीपी, शुगर, बुखार, कोलेस्ट्रॉल, थायराइड आदि) या दवा के बारे में विस्तृत जानकारी चाहते हैं, तो कृपया उसका नाम लिखकर पूछें।"
-        if lang == "hi" else
-        f"Clinical Evaluation for '{query_text}':\n"
-        f"Based on established medical physiology, optimal systemic health requires balanced autonomic regulation, "
-        f"vascular compliance, cellular hydration (30-35 ml/kg/day), high soluble fiber intake, and restorative sleep cycles (7-9 hours).\n\n"
-        f"📊 Your Live IoT Patient Telemetry Snapshot:\n"
-        f"• Heart Rate: {hr} BPM ({'Optimal Resting Rhythm' if 60 <= hr <= 100 else 'Review Recommended'})\n"
-        f"• Body Temperature: {temp}°C ({'Normothermic' if 36.0 <= temp <= 37.3 else 'Subfebrile / Elevated'})\n"
-        f"• Blood Oxygen (SpO2): {spo2}% ({'Optimal Saturation' if spo2 >= 95 else 'Mild Desaturation'})\n\n"
-        f"For specific evidence-based facts on conditions (Hypertension, Diabetes, Cholesterol, Fever, Thyroid, Dengue, Gout), feel free to ask directly."
-    )
-
-    return {
-        "urgency": "INFORMATIONAL & WELLNESS",
-        "condition_diagnosed": "Clinical Inquiry & Health Intelligence",
-        "clinical_assessment": open_assessment,
-        "prescribed_medicines": [],
-        "dietary_lifestyle": [
-            "Maintain 2.5 to 3.0 Liters of clean water hydration daily.",
-            "Eat nutrient-dense whole foods rich in antioxidants and dietary fiber.",
-            "Engage in at least 30 minutes of daily physical exercise.",
-            "Ensure 7 to 8 hours of uninterrupted sleep."
-        ],
-        "red_flags": "If you experience chest tightness, sudden severe shortness of breath, or neurological deficits, seek emergency care immediately.",
-        "emergency_actions": ["Keep tracking your live vitals on SmartHealth."],
-        "source": "SmartHealth Clinical Medical Intelligence",
-        "api_connected": True,
-        "vitals_considered": {"heart_rate": hr, "temp_c": temp, "spo2": spo2}
-    }
+    # 6. Deep Multi-Dimensional Clinical Reasoning for Open Inquiries (Dynamic Synthesis)
+    dynamic_res = synthesize_dynamic_medical_response(query_text, vitals, lang)
+    if openai_quota_notice:
+        dynamic_res["openai_notice"] = openai_quota_notice
+    return dynamic_res
