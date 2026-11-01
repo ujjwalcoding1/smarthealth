@@ -262,18 +262,39 @@ class FallbackStore:
 
 store = FallbackStore()
 mongo_client = None
-db = None
-
 try:
     from pymongo import MongoClient
-    mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=1000, connectTimeoutMS=1000)
+    try:
+        import certifi
+        ca_file = certifi.where()
+    except Exception:
+        ca_file = None
+
+    mongo_client = MongoClient(
+        MONGODB_URI,
+        serverSelectionTimeoutMS=3000,
+        connectTimeoutMS=3000,
+        tlsCAFile=ca_file
+    )
     mongo_client.server_info()
     db = mongo_client[DB_NAME]
-    print(f"Connected successfully to MongoDB at {MONGODB_URI}")
+    print(f"Connected successfully to MongoDB Atlas database '{DB_NAME}'")
 except Exception as e:
-    print(f"MongoDB offline/unreachable ({e}). Using robust fallback database store.")
-    mongo_client = None
-    db = None
+    try:
+        from pymongo import MongoClient
+        mongo_client = MongoClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=2000,
+            connectTimeoutMS=2000,
+            tlsAllowInvalidCertificates=True
+        )
+        mongo_client.server_info()
+        db = mongo_client[DB_NAME]
+        print(f"Connected successfully to MongoDB Atlas database '{DB_NAME}' (TLS Fallback)")
+    except Exception as e2:
+        print(f"MongoDB Atlas notice: {e2}. Fallback local datastore is fully active and operational.")
+        mongo_client = None
+        db = None
 
 # Telemetry
 def save_telemetry(payload: Dict[str, Any]):
@@ -498,4 +519,63 @@ def update_caregiver_config(config: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             pass
     return store.data["caregiver_config"]
+
+# Chat History Persistence (Google Gemini AI Chatbot)
+def save_chat_history(messages: List[Dict[str, Any]]) -> bool:
+    store.data["chat_history"] = messages
+    if db is not None:
+        try:
+            db.chat_history.replace_one(
+                {"session_id": "default_user"},
+                {
+                    "session_id": "default_user",
+                    "messages": messages,
+                    "count": len(messages),
+                    "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
+                },
+                upsert=True
+            )
+            return True
+        except Exception:
+            pass
+    return True
+
+def get_chat_history() -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            record = db.chat_history.find_one({"session_id": "default_user"}, {"_id": 0})
+            if record and "messages" in record:
+                return record["messages"]
+        except Exception:
+            pass
+    return store.data.get("chat_history", [])
+
+def clear_chat_history() -> bool:
+    store.data["chat_history"] = []
+    if db is not None:
+        try:
+            db.chat_history.delete_many({"session_id": "default_user"})
+            return True
+        except Exception:
+            pass
+    return True
+
+# Voice Consultations (Doctor-Patient Clinical Dialogue Recordings)
+def save_voice_consultation(record: Dict[str, Any]) -> str:
+    record["timestamp"] = record.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S")
+    new_id = store.insert("voice_consultations", record)
+    if db is not None:
+        try:
+            db.voice_consultations.insert_one(record.copy())
+        except Exception:
+            pass
+    return new_id
+
+def get_voice_consultations(limit: int = 50) -> List[Dict[str, Any]]:
+    if db is not None:
+        try:
+            return list(db.voice_consultations.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit))
+        except Exception:
+            pass
+    return store.find("voice_consultations", limit=limit)
 

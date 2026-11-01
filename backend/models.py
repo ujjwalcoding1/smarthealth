@@ -136,3 +136,15 @@ class SymptomQuery(BaseModel):
     current_spo2: Optional[float] = None
     api_key: Optional[str] = None
     lang: Optional[str] = "en"
+
+class VoiceConsultationQuery(BaseModel):
+    transcript: str
+    current_heart_rate: Optional[float] = None
+    current_temp: Optional[float] = None
+    current_spo2: Optional[float] = None
+    api_key: Optional[str] = None
+    lang: Optional[str] = "en"
+
+class ChatHistoryPayload(BaseModel):
+    messages: List[Dict[str, Any]]
+

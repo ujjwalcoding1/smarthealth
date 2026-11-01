@@ -12,11 +12,12 @@ from pydantic import BaseModel
 from models import (
     TelemetryPayload, ZoneEvaluation, SOSConfig,
     DoctorItem, HospitalClinicItem, MedicineItem,
-    GovSchemeItem, ConsultationBooking, SymptomQuery
+    GovSchemeItem, ConsultationBooking, SymptomQuery,
+    VoiceConsultationQuery, ChatHistoryPayload
 )
 from recommendations import evaluate_vitals_zone
 from simulator import simulator
-from ai_doctor import analyze_and_prescribe
+from ai_doctor import analyze_and_prescribe, analyze_doctor_patient_consultation
 import database as db
 
 app = FastAPI(
@@ -491,6 +492,45 @@ def chatbot_prescribe(query: SymptomQuery):
     }
     result = analyze_and_prescribe(query.symptom_text, vitals, api_key=query.api_key, lang=query.lang or "en")
     return result
+
+# 8b. Doctor-Patient Voice Consultation Clinical Scribe & AI Diagnosis
+@app.post("/api/ai/consultation-analyze")
+def analyze_consultation(query: VoiceConsultationQuery):
+    vitals = {
+        "heart_rate": query.current_heart_rate or latest_telemetry_dict.get("heart_rate", 75),
+        "temperature_c": query.current_temp or latest_telemetry_dict.get("temperature_c", 36.8),
+        "spo2": query.current_spo2 or latest_telemetry_dict.get("spo2", 98)
+    }
+    result = analyze_doctor_patient_consultation(
+        transcript=query.transcript,
+        vitals=vitals,
+        api_key=query.api_key,
+        lang=query.lang or "en"
+    )
+    try:
+        db.save_voice_consultation({
+            "transcript": query.transcript,
+            "vitals": vitals,
+            "analysis": result
+        })
+    except Exception:
+        pass
+    return result
+
+# 8c. Persistent Chat History APIs (MongoDB Atlas & Fallback)
+@app.get("/api/ai/chat/history")
+def get_persisted_chat():
+    return {"messages": db.get_chat_history()}
+
+@app.post("/api/ai/chat/history")
+def save_persisted_chat(payload: ChatHistoryPayload):
+    db.save_chat_history(payload.messages)
+    return {"status": "success", "saved_count": len(payload.messages)}
+
+@app.delete("/api/ai/chat/history")
+def delete_persisted_chat():
+    db.clear_chat_history()
+    return {"status": "cleared"}
 
 # 9. Real-time WebSocket
 @app.websocket("/ws/telemetry")
