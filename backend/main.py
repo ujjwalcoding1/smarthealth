@@ -566,6 +566,23 @@ def delete_persisted_chat():
     db.clear_chat_history()
     return {"status": "cleared"}
 
+# 8d. Database Seeder Admin API
+@app.post("/api/admin/seed")
+def trigger_database_seed():
+    """Trigger complete seeding of MongoDB Atlas database."""
+    try:
+        from seed_db import seed_database
+        success = seed_database()
+        if success:
+            return {"status": "success", "message": "SmartHealth MongoDB collections seeded successfully."}
+        else:
+            return {
+                "status": "error",
+                "message": "MongoDB Atlas connection failed. Please ensure current IP is whitelisted in Atlas Network Access."
+            }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 # 9. Real-time WebSocket
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry(websocket: WebSocket):

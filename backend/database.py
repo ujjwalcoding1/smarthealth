@@ -8,7 +8,7 @@ from medicines_catalog import COMPREHENSIVE_MEDICINES
 
 load_dotenv()
 
-MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb+srv://ujjwalcoding:Ujjwal123@smarthealth.soydk5u.mongodb.net/?retryWrites=true&w=majority")
 DB_NAME = os.getenv("DB_NAME", "smarthealth")
 
 class FallbackStore:
@@ -296,6 +296,37 @@ except Exception as e:
         mongo_client = None
         db = None
 
+def auto_seed_if_empty(database):
+    """Ensure essential collections are populated when connecting to a fresh database."""
+    try:
+        if database.doctors.count_documents({}) == 0:
+            for doc in store.data.get("doctors", []):
+                database.doctors.update_one({"id": doc["id"]}, {"$set": doc}, upsert=True)
+            print("Auto-seeded doctors into MongoDB Atlas.")
+        if database.hospitals.count_documents({}) == 0:
+            for hosp in store.data.get("hospitals", []):
+                database.hospitals.update_one({"id": hosp["id"]}, {"$set": hosp}, upsert=True)
+            print("Auto-seeded hospitals into MongoDB Atlas.")
+        if database.medicines.count_documents({}) == 0:
+            for med in store.data.get("medicines", []):
+                database.medicines.update_one({"id": med["id"]}, {"$set": med}, upsert=True)
+            print("Auto-seeded comprehensive medicines into MongoDB Atlas.")
+        if database.gov_schemes.count_documents({}) == 0:
+            for sc in store.data.get("gov_schemes", []):
+                database.gov_schemes.update_one({"id": sc["id"]}, {"$set": sc}, upsert=True)
+            print("Auto-seeded government schemes into MongoDB Atlas.")
+        if database.sos_config.count_documents({}) == 0 and "sos_config" in store.data:
+            database.sos_config.update_one({}, {"$set": store.data["sos_config"]}, upsert=True)
+            print("Auto-seeded SOS configuration into MongoDB Atlas.")
+        if database.caregiver_config.count_documents({}) == 0 and "caregiver_config" in store.data:
+            database.caregiver_config.update_one({}, {"$set": store.data["caregiver_config"]}, upsert=True)
+            print("Auto-seeded caregiver config into MongoDB Atlas.")
+    except Exception as err:
+        print(f"Notice: Auto-seed skipped ({err})")
+
+if db is not None:
+    auto_seed_if_empty(db)
+
 # Telemetry
 def save_telemetry(payload: Dict[str, Any]):
     payload["timestamp"] = payload.get("timestamp") or time.strftime("%Y-%m-%d %H:%M:%S")
@@ -357,7 +388,9 @@ def update_sos_config(config: Dict[str, Any]):
 def get_doctors() -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            return list(db.doctors.find({}, {"_id": 0}))
+            results = list(db.doctors.find({}, {"_id": 0}))
+            if results:
+                return results
         except Exception:
             pass
     return store.find("doctors", limit=100, sort_desc=False)
@@ -393,7 +426,9 @@ def delete_doctor(doc_id: str) -> bool:
 def get_hospitals() -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            return list(db.hospitals.find({}, {"_id": 0}))
+            results = list(db.hospitals.find({}, {"_id": 0}))
+            if results:
+                return results
         except Exception:
             pass
     return store.find("hospitals", limit=100, sort_desc=False)
@@ -429,7 +464,9 @@ def delete_hospital(hosp_id: str) -> bool:
 def get_medicines() -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            return list(db.medicines.find({}, {"_id": 0}))
+            results = list(db.medicines.find({}, {"_id": 0}))
+            if results:
+                return results
         except Exception:
             pass
     return store.find("medicines", limit=200, sort_desc=False)
@@ -465,7 +502,9 @@ def delete_medicine(med_id: str) -> bool:
 def get_gov_schemes() -> List[Dict[str, Any]]:
     if db is not None:
         try:
-            return list(db.gov_schemes.find({}, {"_id": 0}))
+            results = list(db.gov_schemes.find({}, {"_id": 0}))
+            if results:
+                return results
         except Exception:
             pass
     return store.find("gov_schemes", limit=50, sort_desc=False)
