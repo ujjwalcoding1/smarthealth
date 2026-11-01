@@ -17,19 +17,19 @@ export function VitalsGauges({ telemetry, zoneEvaluation, hardwareActive, lang, 
   const spo2 = hasLiveSpo2 ? Number(rawSpo2) : (isLive ? 0.0 : (Number(rawSpo2) > 25 ? Number(rawSpo2) : 98.6));
 
   const rawTempC = telemetry?.temperature_c;
-  const hasLiveTemp = rawTempC !== undefined && rawTempC !== null && Number(rawTempC) >= 28.0 && Number(rawTempC) <= 45.0;
-  const tempC = hasLiveTemp ? Number(rawTempC) : 36.85;
+  const isTempValid = rawTempC !== undefined && rawTempC !== null && !isNaN(Number(rawTempC)) && Number(rawTempC) > 0 && Number(rawTempC) < 70 && Number(rawTempC) !== -127;
+  const tempC = isTempValid ? Number(rawTempC) : (isLive ? 25.4 : 36.85);
   const tempF = tempC * 9 / 5 + 32;
 
-  const accel = Number(telemetry?.acceleration_g || 0.98);
-  const ax = Number(telemetry?.ax || 0.02);
-  const ay = Number(telemetry?.ay || -0.03);
-  const az = Number(telemetry?.az || 0.98);
+  const accel = Number(telemetry?.acceleration_g !== undefined ? telemetry.acceleration_g : (isLive ? 1.00 : 0.98));
+  const ax = Number(telemetry?.ax !== undefined ? telemetry.ax : 0.02);
+  const ay = Number(telemetry?.ay !== undefined ? telemetry.ay : -0.03);
+  const az = Number(telemetry?.az !== undefined ? telemetry.az : 0.98);
 
-  const lat = Number(telemetry?.latitude || 28.6141);
-  const lng = Number(telemetry?.longitude || 77.2087);
-  const sats = Number(telemetry?.satellites || 8);
-  const gpsValid = telemetry?.gps_valid !== undefined ? Boolean(telemetry?.gps_valid) : true;
+  const lat = Number(telemetry?.latitude !== undefined ? telemetry.latitude : 28.6141);
+  const lng = Number(telemetry?.longitude !== undefined ? telemetry.longitude : 77.2087);
+  const sats = Number(telemetry?.satellites !== undefined ? telemetry.satellites : (isLive ? 0 : 8));
+  const gpsValid = telemetry?.gps_valid !== undefined ? Boolean(telemetry?.gps_valid) : (!isLive);
   const fingerOn = isLive ? Boolean(telemetry?.finger_detected || (telemetry?.ir_value > 25000)) : true;
   const impact = Boolean(telemetry?.impact_detected);
 

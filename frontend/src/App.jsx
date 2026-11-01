@@ -35,13 +35,24 @@ import { DEFAULT_MEDICINES } from './data/defaultMedicines';
 const getInitialApiBase = () => {
   try {
     const saved = localStorage.getItem('smarthealth_backend_url');
-    if (saved && saved.trim()) return saved.trim();
+    if (saved && saved.trim()) {
+      const url = saved.trim();
+      if (url.includes('10.103.4.215') || url.includes('10.217.201.245')) {
+        localStorage.removeItem('smarthealth_backend_url');
+      } else {
+        return url;
+      }
+    }
   } catch (e) {}
+  if (typeof window !== 'undefined' && window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
   return import.meta.env.VITE_API_URL || 'http://localhost:8000';
 };
 
 export function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBase);
+  const [detectedLanIp, setDetectedLanIp] = useState('10.94.102.245');
   const [showServerModal, setShowServerModal] = useState(false);
   const [serverUrlInput, setServerUrlInput] = useState(getInitialApiBase);
   const [lang, setLang] = useState('en');
@@ -179,6 +190,7 @@ export function App() {
             if (data.type === 'TELEMETRY_UPDATE' || data.type === 'INITIAL_SNAPSHOT') {
               if (data.telemetry) setTelemetry(data.telemetry);
               if (data.hardware_active !== undefined) setHardwareActive(data.hardware_active);
+              if (data.lan_ip) setDetectedLanIp(data.lan_ip);
               if (data.zone_evaluation) {
                 setZoneEvaluation(data.zone_evaluation);
                 // MANUAL SOS: Never automatically pop up the SOS modal on telemetry
@@ -221,6 +233,7 @@ export function App() {
         const data = await resp.json();
         if (data.telemetry) setTelemetry(data.telemetry);
         if (data.hardware_active !== undefined) setHardwareActive(data.hardware_active);
+        if (data.lan_ip) setDetectedLanIp(data.lan_ip);
         if (data.evaluation) {
           setZoneEvaluation(data.evaluation);
           // MANUAL SOS: Never automatically pop up the SOS modal on polling
@@ -858,13 +871,13 @@ export function App() {
                   type="text"
                   value={serverUrlInput}
                   onChange={(e) => setServerUrlInput(e.target.value)}
-                  placeholder="e.g. http://10.103.4.215:8000 or https://smarthealth.onrender.com"
+                  placeholder={`e.g. http://${detectedLanIp}:8000 or http://localhost:8000`}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono text-xs focus:ring-2 focus:ring-indigo-500"
                 />
                 <p className="mt-1 text-[10.5px] text-slate-500">
                   {lang === 'hi'
-                    ? 'वर्तमान लैपटॉप Wi-Fi IP: http://10.103.4.215:8000'
-                    : 'Current Laptop Wi-Fi IP: http://10.103.4.215:8000'}
+                    ? `वर्तमान लैपटॉप Wi-Fi IP: http://${detectedLanIp}:8000`
+                    : `Current Laptop Wi-Fi IP: http://${detectedLanIp}:8000`}
                 </p>
               </div>
 
@@ -885,7 +898,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    const currentLan = 'http://10.103.4.215:8000';
+                    const currentLan = `http://${detectedLanIp}:8000`;
                     setServerUrlInput(currentLan);
                     localStorage.setItem('smarthealth_backend_url', currentLan);
                     setApiBaseUrl(currentLan);
@@ -893,7 +906,7 @@ export function App() {
                   }}
                   className="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-800"
                 >
-                  Use 10.103.4.215
+                  {`Use ${detectedLanIp}`}
                 </button>
                 <button
                   type="button"

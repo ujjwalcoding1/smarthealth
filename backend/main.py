@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import socket
 import time
 from typing import List, Dict, Any, Optional
 import httpx
@@ -36,6 +37,18 @@ app.add_middleware(
 
 HARDWARE_TIMEOUT_SECONDS = 30.0  # 30-second window ensures network latency does not trigger false fallback
 last_hardware_time = 0.0
+
+def get_local_ip() -> str:
+    """Dynamically determine the host PC's Wi-Fi / LAN IP address for ESP32 connection"""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
 
 latest_telemetry_dict = simulator.get_reading()
 latest_zone_evaluation = evaluate_vitals_zone(TelemetryPayload(**latest_telemetry_dict))
@@ -107,7 +120,8 @@ async def startup_event():
                     "telemetry": latest_telemetry_dict,
                     "zone_evaluation": latest_zone_evaluation.dict(),
                     "hardware_active": hardware_active,
-                    "simulation_active": not hardware_active
+                    "simulation_active": not hardware_active,
+                    "lan_ip": get_local_ip()
                 }
                 await manager.broadcast(packet)
 
@@ -123,13 +137,31 @@ async def startup_event():
 
 @app.get("/")
 def read_root():
+    lan_ip = get_local_ip()
     return {
         "service": "SmartHealth Cloud Backend & Admin Hub",
         "status": "online",
         "version": "3.0.0",
         "active_zone": latest_zone_evaluation.zone,
         "hardware_active": (time.time() - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS,
+        "lan_ip": lan_ip,
+        "esp32_server_url": f"http://{lan_ip}:8000",
         "docs_url": "/docs"
+    }
+
+# Dynamic Network & ESP32 Configuration Endpoint
+@app.get("/api/system/network")
+def get_system_network():
+    lan_ip = get_local_ip()
+    now = time.time()
+    hw_active = (now - last_hardware_time) < HARDWARE_TIMEOUT_SECONDS
+    return {
+        "lan_ip": lan_ip,
+        "port": 8000,
+        "esp32_server_url": f"http://{lan_ip}:8000",
+        "esp32_telemetry_endpoint": f"http://{lan_ip}:8000/api/iot/telemetry",
+        "hardware_active": hw_active,
+        "last_hardware_received_seconds_ago": round(now - last_hardware_time, 1) if last_hardware_time > 0 else None
     }
 
 # 1. Telemetry & Zones
@@ -146,10 +178,12 @@ def get_latest_vitals():
         "sos_config": sos_cfg,
         "simulator_mode": "PAUSED_HARDWARE_ONLINE" if hardware_active else simulator.mode,
         "hardware_active": hardware_active,
-        "simulation_active": not hardware_active
+        "simulation_active": not hardware_active,
+        "lan_ip": get_local_ip()
     }
 
 @app.post("/api/iot/telemetry")
+@app.post("/api/telemetry")
 async def ingest_iot_telemetry(data: TelemetryPayload):
     global latest_telemetry_dict, latest_zone_evaluation, last_hardware_time
     last_hardware_time = time.time()

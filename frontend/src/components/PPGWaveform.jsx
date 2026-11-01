@@ -76,17 +76,9 @@ export function PPGWaveform({ bpm = 0, isSimulated = false, zone = 'GREEN', tele
         y = height / 2 - wave + microJitter;
 
       } else {
-        // --- REALISTIC DYNAMIC ZIG-ZAG BASELINE NOISE (When no finger/heart rate detected) ---
-        // Generates active irregular optical baseline drift & zig-zag sensor flutter (never repetitive or flat)
-        tVal += 0.09;
-        idleNoiseState += 0.15;
-
-        // Multi-frequency harmonic wandering + random Brownian zig-zag jumps
-        const wanderingBaseline = Math.sin(tVal * 0.8) * 8 + Math.cos(tVal * 1.9) * 5;
-        const randomZigZag = (Math.random() - 0.5) * 16;
-        const sensorHighFreq = Math.sin(idleNoiseState * 4.2) * 6;
-
-        y = height / 2 + wanderingBaseline + randomZigZag + sensorHighFreq;
+        // --- CLEAN SIMPLE BASELINE (When no finger/heart rate detected from IoT sensor) ---
+        // Keeps a steady clean horizontal baseline line as requested
+        y = height / 2;
       }
 
       points.push(y);
@@ -177,7 +169,7 @@ export function PPGWaveform({ bpm = 0, isSimulated = false, zone = 'GREEN', tele
             <span className="text-[11px] text-slate-500">
               {hasPulse 
                 ? `Optical photoplethysmogram synced to ESP32 MAX30102 • ${bpm.toFixed(1)} BPM Live Rhythm` 
-                : 'Optical sensor active • Dynamic baseline zig-zag scanning noise (Place finger on MAX30102)'}
+                : (t?.pulseStandby || 'Optical sensor standby • Simple baseline line (Place finger steadily on MAX30102)')}
             </span>
           </div>
         </div>
@@ -187,10 +179,10 @@ export function PPGWaveform({ bpm = 0, isSimulated = false, zone = 'GREEN', tele
           <span className={`text-[10.5px] font-mono font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
             hasPulse 
               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700'
           }`}>
-            <span className={`w-2 h-2 rounded-full ${hasPulse ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-ping'}`}></span>
-            <span>{hasPulse ? `Pulse Locked: ${bpm.toFixed(1)} BPM` : 'Scanning / Zig-Zag Baseline'}</span>
+            <span className={`w-2 h-2 rounded-full ${hasPulse ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+            <span>{hasPulse ? `Pulse Locked: ${bpm.toFixed(1)} BPM` : 'Standby / Baseline Line'}</span>
           </span>
         </div>
       </div>
